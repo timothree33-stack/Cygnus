@@ -121,16 +121,23 @@ jobs:
           else
             if [ -f backend/requirements.txt ] || [ -f requirements.txt ]; then
               echo "Detected backend requirements — attempting to start uvicorn"
-              nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid || true
 
-              for i in $(seq 1 10); do
-                echo "Checking backend /api/status (attempt $i)"
-                if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
-                sleep 2
-              done
+              # Only attempt to start uvicorn if it's importable
+              if python -c "import uvicorn" 2>/dev/null; then
+                nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid || true
 
-              if ! curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then
-                echo "Backend did not start; will fall back to stub server"
+                for i in $(seq 1 10); do
+                  echo "Checking backend /api/status (attempt $i)"
+                  if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
+                  sleep 2
+                done
+
+                if ! curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then
+                  echo "Backend did not start; will fall back to stub server"
+                  START_STUB=1
+                fi
+              else
+                echo "uvicorn not importable; falling back to stub server"
                 START_STUB=1
               fi
             else
