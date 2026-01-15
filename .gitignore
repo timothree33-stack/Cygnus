@@ -1,0 +1,10 @@
+venv/
+.secrets/
+
+# Ignore frontend build outputs and node modules
+/frontend/frontend/node_modules/
+/frontend/frontend/dist/
+/frontend/node_modules/
+/frontend/dist/
+**/node_modules/
+**/dist/

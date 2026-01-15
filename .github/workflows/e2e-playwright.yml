@@ -1,0 +1,136 @@
+name: E2E Playwright Tests (updated)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      use_dev_server:
+        description: 'Set to 1 to run frontend dev server instead of build+preview'
+        required: false
+        default: '0'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Debug repo (list files)  # ⚠️ debug only, remove once stable
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "PWD: $(pwd)"
+          echo "Listing repo root:"
+          ls -la || true
+          echo "Listing frontend/:"
+          ls -la frontend || true
+          echo "Listing frontend/frontend/:"
+          ls -la frontend/frontend || true
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+
+      - name: Detect frontend dir
+        run: |
+          # Prefer the nested frontend/frontend if it contains tests
+          if ls frontend/frontend/tests/e2e/* 1> /dev/null 2>&1; then
+            echo "FRONTEND_DIR=frontend/frontend" >> $GITHUB_ENV
+          elif ls frontend/tests/e2e/* 1> /dev/null 2>&1; then
+            echo "FRONTEND_DIR=frontend" >> $GITHUB_ENV
+          elif [ -f frontend/frontend/package.json ]; then
+            echo "FRONTEND_DIR=frontend/frontend" >> $GITHUB_ENV
+          elif [ -f frontend/package.json ]; then
+            echo "FRONTEND_DIR=frontend" >> $GITHUB_ENV
+          else
+            echo "Could not find frontend package.json or tests in expected locations"; exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          elif [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
+          else
+            echo "No requirements.txt found in repo root or backend/; skipping backend deps install"
+          fi
+
+      - name: Start backend server
+        run: |
+          nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid
+          # wait for /api/status
+          for i in 1 2 3 4 5; do
+            sleep 2
+            if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
+          done
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.FRONTEND_DIR }}/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install frontend deps & Playwright browsers
+        run: |
+          cd "$FRONTEND_DIR"
+
+          # If repo has a nested frontend (frontend/frontend), prefer that for deps and build
+          if [ -f frontend/package.json ] && ls frontend/tests/e2e/* 1> /dev/null 2>&1; then
+            echo "Detected nested frontend at $PWD/frontend; switching to nested frontend"
+            cd frontend
+          fi
+
+          npm ci
+
+          echo "Installing Playwright browsers (try with deps, fallback to install-deps, then browsers-only)."
+
+          # Try normal install with deps first
+          if npx playwright install --with-deps; then
+            echo "Playwright install --with-deps succeeded"
+          else
+            echo "playwright install --with-deps failed; attempting apt update + sudo playwright install-deps"
+            sudo apt-get update -y || echo "apt-get update failed; continuing with fallback"
+            if sudo npx playwright install-deps && npx playwright install; then
+              echo "sudo playwright install-deps succeeded"
+            else
+              echo "sudo playwright install-deps failed; attempting browsers-only install for chromium & firefox"
+              if npx playwright install chromium firefox; then
+                echo "Installed chromium and firefox; WebKit may be unavailable"
+                echo "PLAYWRIGHT_SKIP_WEBKIT=1" >> $GITHUB_ENV
+              else
+                echo "Failed to install browsers; setting PLAYWRIGHT_SKIP_WEBKIT=1 and continuing (tests may fail)"
+                echo "PLAYWRIGHT_SKIP_WEBKIT=1" >> $GITHUB_ENV
+              fi
+            fi
+          fi
+
+      - name: Run Playwright E2E
+        env:
+          CI: '1'
+          PLAYWRIGHT_USE_DEV_SERVER: ${{ github.event.inputs.use_dev_server }}
+          PLAYWRIGHT_SKIP_WEBKIT: ${{ env.PLAYWRIGHT_SKIP_WEBKIT }}
+        run: |
+          cd "$FRONTEND_DIR"
+          npx playwright test --config=playwright.config.ts --reporter=github
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: ${{ env.FRONTEND_DIR }}/test-results/**
