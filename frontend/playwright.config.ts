@@ -28,10 +28,12 @@ export default defineConfig({
     trace: 'on-first-retry'
   },
   webServer: {
-    command: 'npm run dev',
+    // Use dev server if PLAYWRIGHT_USE_DEV_SERVER is set; otherwise build+preview for CI stability
+    command: `sh -c "if [ \"$PLAYWRIGHT_USE_DEV_SERVER\" = \"1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
     port: 5173,
     cwd: __dirname, // run dev in the config folder (frontend)
-    reuseExistingServer: !process.env.CI
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
   projects
 });
