@@ -8,3 +8,6 @@ venv/
 /frontend/dist/
 **/node_modules/
 **/dist/
+
+# Archived legacy frontend files (canonical frontend is `frontend/frontend`)
+/frontend/_legacy/
