@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('debate: enable court-fool toggle', async ({ page }) => {
   await page.goto('/');
-  await page.getByText('Debate').click();
+  await page.getByRole('link', { name: 'Debate' }).click();
   const checkbox = page.locator('input[type="checkbox"]');
   await expect(checkbox).toBeVisible();
   await checkbox.check();

@@ -16,7 +16,7 @@ test('conversation box: send message and show in history (stubbed)', async ({ pa
   await page.route('**/api/admin/agents/agent-1/messages/m1', (route) => route.fulfill({ status: 200, body: JSON.stringify({ deleted: true }), headers: { 'Content-Type': 'application/json' } }));
 
   await page.goto('/');
-  await page.getByText('Agents').click();
+  await page.getByRole('link', { name: 'Agents' }).click();
   await expect(page.getByText('Agent: agent-1')).toBeVisible({ timeout: 5000 });
 
   // Confirm preloaded message shows
