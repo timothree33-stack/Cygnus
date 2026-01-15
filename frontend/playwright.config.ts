@@ -11,7 +11,8 @@ if (!process.env.PLAYWRIGHT_SKIP_WEBKIT || process.env.PLAYWRIGHT_SKIP_WEBKIT ==
 }
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  // Tests live in nested `frontend/tests/e2e` when FRONTEND_DIR is `frontend`
+  testDir: './frontend/tests/e2e',
   timeout: 120000,
   expect: { timeout: 10000 },
   grep: process.env.FULL_STACK ? /@fullstack/ : undefined,
