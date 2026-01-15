@@ -29,8 +29,8 @@ export default defineConfig({
   },
   webServer: {
     // Use dev server if PLAYWRIGHT_USE_DEV_SERVER is set; otherwise build+preview for CI stability
-    // Run commands in nested frontend folder so index.html and package.json are available
-    command: `bash -lc "cd frontend && if [ \"x$PLAYWRIGHT_USE_DEV_SERVER\" = \"x1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
+    // Run commands in nested frontend folder when present and sanitize the input to avoid shell errors
+    command: `bash -lc "cd frontend 2>/dev/null || true; v=$(printf '%s' \"$PLAYWRIGHT_USE_DEV_SERVER\" | tr -d '\\n' | cut -d' ' -f1); if [ \"x$v\" = \"x1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
     port: 5173,
     cwd: __dirname, // run dev in the config folder (frontend)
     reuseExistingServer: !process.env.CI,
