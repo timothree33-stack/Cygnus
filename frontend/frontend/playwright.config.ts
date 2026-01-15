@@ -9,16 +9,21 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1280, height: 800 },
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-  ],
+const projects = [
+  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+];
+
+// If PLAYWRIGHT_SKIP_WEBKIT is set to '1', omit WebKit (useful on runners without WebKit OS deps)
+if (!process.env.PLAYWRIGHT_SKIP_WEBKIT || process.env.PLAYWRIGHT_SKIP_WEBKIT === '0') {
+  projects.push({ name: 'webkit', use: { ...devices['Desktop Safari'] } });
+}
   webServer: {
-    command: 'npm run preview -- --port 5173',
+    // Use dev server if PLAYWRIGHT_USE_DEV_SERVER is set; otherwise build+preview for CI stability
+    command: `sh -c "if [ \"$PLAYWRIGHT_USE_DEV_SERVER\" = \"1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
     cwd: __dirname,
     url: 'http://localhost:5173',
-    reuseExistingServer: false,
-    timeout: 120_000,
+    reuseExistingServer: true,
+    timeout: 180_000,
   },
 });
