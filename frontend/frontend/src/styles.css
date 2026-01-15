@@ -1,0 +1,11 @@
+body { font-family: system-ui, Arial, sans-serif; margin: 16px; }
+nav { margin-bottom: 16px; }
+main { padding: 12px; border: 1px solid #eee; border-radius: 6px; }
+.conversation-box { border: 1px solid #ddd; padding: 8px; margin-top: 12px; }
+.conv-header { font-size: 14px; color: #333; margin-bottom: 8px; }
+.conv-messages { min-height: 80px; background: #fafafa; padding: 8px; border-radius: 4px; }
+.msg { margin: 4px 0; }
+.msg.human { text-align: right; color: #064; }
+.msg.agent { text-align: left; color: #046; }
+.conv-input { display: flex; gap: 8px; margin-top: 8px; }
+.conv-input input { flex: 1; padding: 6px; }
