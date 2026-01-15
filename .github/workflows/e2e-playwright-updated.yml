@@ -9,6 +9,14 @@ on:
         description: 'Set to 1 to run frontend dev server instead of build+preview'
         required: false
         default: '0'
+      use_real_backend:
+        description: 'Set to 1 to force installing and starting the real backend in CI (fail if requirements missing)'
+        required: false
+        default: '0'
+      skip_webkit:
+        description: 'Set to 1 to skip WebKit installation explicitly'
+        required: false
+        default: '0'
 
 jobs:
   e2e:
@@ -57,24 +65,81 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Honor skip_webkit input
+        run: |
+          if [ "${{ github.event.inputs.skip_webkit }}" = "1" ]; then
+            echo "PLAYWRIGHT_SKIP_WEBKIT=1" >> $GITHUB_ENV
+            echo "Skipping WebKit (configured via workflow input skip_webkit=1)"
+          fi
+
       - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          elif [ -f backend/requirements.txt ]; then
-            pip install -r backend/requirements.txt
+
+          if [ "${{ github.event.inputs.use_real_backend }}" = "1" ]; then
+            echo "Workflow requested real backend install (use_real_backend=1)"
+            if [ -f backend/requirements.txt ]; then
+              pip install -r backend/requirements.txt
+            elif [ -f requirements.txt ]; then
+              pip install -r requirements.txt
+            else
+              echo "Error: no backend requirements found (backend/requirements.txt or requirements.txt) but use_real_backend=1 was requested"; exit 1
+            fi
           else
-            echo "No requirements.txt found in repo root or backend/; skipping backend deps install"
+            if [ -f backend/requirements.txt ]; then
+              echo "backend/requirements.txt exists — installing real backend deps"
+              pip install -r backend/requirements.txt
+            elif [ -f requirements.txt ]; then
+              echo "requirements.txt exists — installing project requirements"
+              pip install -r requirements.txt
+            else
+              echo "No backend requirements found; will use lightweight stub unless a backend is later started"
+            fi
           fi
 
       - name: Start backend server
         run: |
-          # If we have backend requirements, run the full backend; otherwise start a lightweight stub server
-          if [ -f requirements.txt ] || [ -f backend/requirements.txt ]; then
-            nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid
+          START_STUB=0
+          if [ "${{ github.event.inputs.use_real_backend }}" = "1" ]; then
+            echo "use_real_backend=1 requested — attempting real backend start"
+            if [ -f backend/requirements.txt ] || [ -f requirements.txt ]; then
+              nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid || true
+
+              # wait for /api/status up to 10 tries
+              for i in $(seq 1 10); do
+                echo "Checking backend /api/status (attempt $i)"
+                if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
+                sleep 2
+              done
+
+              if ! curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then
+                echo "Error: requested real backend but it did not become ready"; tail -n +1 /tmp/uvicorn.log || true; exit 1
+              fi
+            else
+              echo "Error: requested real backend but no requirements found (backend/requirements.txt or requirements.txt)"; exit 1
+            fi
           else
-            echo "No backend requirements found; starting a simple stub HTTP server to satisfy /api endpoints"
+            if [ -f backend/requirements.txt ] || [ -f requirements.txt ]; then
+              echo "Detected backend requirements — attempting to start uvicorn"
+              nohup uvicorn backend.main:app --host 127.0.0.1 --port 8001 > /tmp/uvicorn.log 2>&1 & echo $! > /tmp/uvicorn.pid || true
+
+              for i in $(seq 1 10); do
+                echo "Checking backend /api/status (attempt $i)"
+                if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
+                sleep 2
+              done
+
+              if ! curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then
+                echo "Backend did not start; will fall back to stub server"
+                START_STUB=1
+              fi
+            else
+              START_STUB=1
+            fi
+          fi
+
+          if [ "$START_STUB" -eq 1 ]; then
+            echo "Starting simple stub HTTP server to satisfy /api endpoints"
             nohup python -u - <<'PY' > /tmp/uvicorn.log 2>&1 &
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
@@ -82,8 +147,17 @@ class H(BaseHTTPRequestHandler):
     def _json(self, payload):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode())
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
     def do_GET(self):
         if self.path == '/api/status':
             self._json({'ollama_available': False, 'memory_stats': {}, 'scenarios_loaded': 0, 'perception_status': {'available': False}, 'visual_available': False})
@@ -91,16 +165,14 @@ class H(BaseHTTPRequestHandler):
             self._json({'agents': []})
         else:
             self._json({'ok': True})
+    def do_POST(self):
+        if self.path.startswith('/api/admin') or self.path.startswith('/api/admin/'):
+            self._json({'ok': True})
+        else:
+            self._json({'ok': True})
 HTTPServer(('127.0.0.1', 8001), H).serve_forever()
 PY
             echo $! > /tmp/uvicorn.pid
-          fi
-
-          # wait for /api/status
-          for i in 1 2 3 4 5; do
-            sleep 2
-            if curl -sSf http://127.0.0.1:8001/api/status > /dev/null; then echo backend up; break; fi
-          done
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -151,6 +223,16 @@ PY
           PLAYWRIGHT_SKIP_WEBKIT: ${{ env.PLAYWRIGHT_SKIP_WEBKIT }}
         run: |
           cd "$FRONTEND_DIR"
+
+          # Give the frontend server a short window to start and become reachable on port 5173
+          for i in $(seq 1 30); do
+            if curl -sSf http://127.0.0.1:5173/ > /dev/null 2>&1; then
+              echo "frontend dev server reachable"
+              break
+            fi
+            echo "Waiting for frontend server... ($i/30)"; sleep 1
+          done
+
           npx playwright test --config=playwright.config.ts --reporter=github
 
       - name: Upload Playwright traces

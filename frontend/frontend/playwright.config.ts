@@ -23,7 +23,7 @@ export default defineConfig({
   },
   webServer: {
     // Use dev server if PLAYWRIGHT_USE_DEV_SERVER is set; otherwise build+preview for CI stability
-    command: `sh -c "if [ \"$PLAYWRIGHT_USE_DEV_SERVER\" = \"1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
+    command: `bash -lc "if [ \"x$PLAYWRIGHT_USE_DEV_SERVER\" = \"x1\" ]; then npm run dev; else npm run build && npm run preview -- --port 5173; fi"`,
     cwd: __dirname,
     url: 'http://localhost:5173',
     reuseExistingServer: true,
