@@ -16,19 +16,43 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install frontend deps
-        working-directory: frontend
+      - name: Debug repo (list files)  # ⚠️ debug only, remove once stable
         run: |
-          npm install
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "PWD: $(pwd)"
+          echo "Listing repo root:"
+          ls -la || true
+          echo "Listing frontend/:"
+          ls -la frontend || true
+          echo "Listing frontend/frontend/:"
+          ls -la frontend/frontend || true
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
 
-      - name: Install Playwright browsers
-        working-directory: frontend
+      - name: Detect frontend dir
         run: |
+          if [ -f frontend/package.json ]; then echo "FRONTEND_DIR=frontend" >> $GITHUB_ENV; 
+          elif [ -f frontend/frontend/package.json ]; then echo "FRONTEND_DIR=frontend/frontend" >> $GITHUB_ENV; 
+          else echo "Could not find frontend package.json in expected locations"; exit 1; fi
+
+      - name: Install frontend deps
+        run: |
+          cd "$FRONTEND_DIR"
+          npm install
           npx playwright install --with-deps
 
-      - name: Run Playwright tests
-        working-directory: frontend/frontend
+      - name: Run Playwright E2E
         env:
-          CI: true
+          CI: '1'
         run: |
-          npx playwright test --config=playwright.config.ts --reporter=github
+          cd "$FRONTEND_DIR"
+          npm run test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: frontend/test-results/**
