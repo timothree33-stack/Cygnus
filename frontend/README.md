@@ -12,3 +12,6 @@ To run development locally:
 - `cd frontend/frontend && npm install && npm run dev`
 
 The project `launch.sh` has been updated to prefer `frontend/frontend` when present.
+
+Archived builds
+- The previous build artifacts `frontend/frontend/dist` have been moved into `_legacy` as `frontend/_legacy/dist-frontend-20260115154818` (timestamped). This is archived and intentionally untracked to avoid confusing duplicate copies.
