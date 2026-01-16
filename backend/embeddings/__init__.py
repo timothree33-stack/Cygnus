@@ -23,6 +23,13 @@ def get_embedder():
             # Fall back to stub to keep tests/dev working
             print(f"⚠️ OpenAI embedder unavailable, falling back to StubEmbedder: {e}")
             return StubEmbedder()
+    if typ == 'onnx':
+        try:
+            from .onnx_adapter import ONNXEmbedder
+            return ONNXEmbedder()
+        except Exception as e:
+            print(f"⚠️ ONNX embedder unavailable (missing runtime/model), falling back to StubEmbedder: {e}")
+            return StubEmbedder()
     return StubEmbedder()
 
 

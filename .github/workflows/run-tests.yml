@@ -21,7 +21,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Install project test deps needed by backend tests
-          pip install pytest fastapi opencv-python-headless requests
+          pip install pytest fastapi opencv-python-headless requests onnxruntime
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run pytest (backend only)
         env:
