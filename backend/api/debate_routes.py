@@ -65,8 +65,14 @@ async def resume_debate(debate_id: str):
 
 @router.post('/{debate_id}/allcall')
 async def allcall(debate_id: str):
-    # Not implemented: switch orchestrator into AllCall mode
-    if debate_id in DEBATES:
-        DEBATES[debate_id]['state'] = 'allcall'
-        return {'allcall': True}
-    raise HTTPException(status_code=404, detail='debate not found')
+    # Trigger orchestrator to schedule an All Call for the given debate
+    try:
+        from ..main import orchestrator
+        ok = orchestrator.trigger_allcall(debate_id)
+        if ok:
+            DEBATES.setdefault(debate_id, {})['state'] = 'allcall'
+            return {'allcall': True}
+        else:
+            raise HTTPException(status_code=404, detail='debate not found')
+    except Exception:
+        raise HTTPException(status_code=500, detail='orchestrator_unavailable')

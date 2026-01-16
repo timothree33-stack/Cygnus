@@ -16,21 +16,59 @@ export default function Debate() {
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (debateId && !pollRef.current) {
-      pollRef.current = window.setInterval(async () => {
+    // When a debate is joined, open a WebSocket for live events (fallback to polling if it fails)
+    let ws: WebSocket | null = null;
+    if (debateId) {
+      const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const host = window.location.hostname;
+      const url = `${scheme}://${host}:8001/ws/debates/${debateId}`;
+      try {
+        ws = new WebSocket(url);
+        ws.onmessage = async (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'scores_assigned' || msg.type === 'allcall_round' || msg.type === 'exchange') {
+              // Refresh full state for simplicity to ensure UI is consistent
+              const res = await fetch(`${API_BASE}/api/debate/${debateId}/state`);
+              if (res.ok) setState(await res.json());
+            } else if (msg.type === 'snapshot_taken') {
+              // optionally show snapshot notifications (ignored for now)
+            } else if (msg.type === 'debate_started' && !debateId) {
+              // ignore
+            }
+          } catch (e) { /* ignore malformed messages */ }
+        };
+        ws.onopen = () => { console.log('WS connected to debate', debateId); };
+        ws.onclose = () => { console.log('WS closed for debate', debateId); };
+      } catch (e) {
+        // On error, fallback to polling
+        if (!pollRef.current) {
+          pollRef.current = window.setInterval(async () => {
+            try {
+              const res = await fetch(`${API_BASE}/api/debate/${debateId}/state`);
+              if (res.ok) {
+                const j = await res.json();
+                setState(j);
+              }
+            } catch (e) {}
+          }, 1000);
+        }
+      }
+    }
+
+    // ensure initial fetch
+    (async () => {
+      if (debateId) {
         try {
           const res = await fetch(`${API_BASE}/api/debate/${debateId}/state`);
-          if (res.ok) {
-            const j = await res.json();
-            setState(j);
-          }
-        } catch (e) {
-          // ignore
-        }
-      }, 1000);
-    }
+          if (res.ok) setState(await res.json());
+        } catch (e) {}
+      }
+    })();
+
     return () => {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      if (ws) { ws.close(); ws = null; }
     };
   }, [debateId]);
 

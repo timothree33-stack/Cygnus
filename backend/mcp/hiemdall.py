@@ -41,8 +41,12 @@ def score_pair(a: str, b: str, *_) -> Tuple[int, int]:
 
 
 # Snapshot function: a stub that returns a synthetic snapshot id and summary
-def snapshot_text(agent_id: str, text: str, timestamp: int):
-    # In a full implementation this would persist into MCP and return memory id and a summary
-    sid = hashlib.sha1(f"{agent_id}:{timestamp}:{text[:80]}".encode()).hexdigest()
+def snapshot_text(agent_id: str, text: str, timestamp: int, debate_id: str = None):
+    """Persist a snapshot into the SQLite store and return (id, summary)."""
+    from ..db.sqlite_store import SQLiteStore
+    store = SQLiteStore()
     summary = text if len(text) < 200 else text[:197] + '...'
-    return sid, summary
+    # Include debate id info in source so it can be queried later
+    source = f"snapshot{':'+debate_id if debate_id else ''}"
+    mid = store.save_memory(agent_id, summary, embedding=None, source=source)
+    return mid, summary
