@@ -55,12 +55,12 @@ class DebateOrchestrator:
             # KatZ speaks (Pro)
             katz_text = await self._ask_agent(self.katz, topic, debate_id, r, 'katz')
             # Snapshot & timestamp
-            katz_snapshot = self._maybe_snapshot('katz', katz_text, debate_id)
+            katz_snapshot = self._maybe_snapshot('katz', katz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
             # DogZ speaks (Antithesis)
             dogz_text = await self._ask_agent(self.dogz, topic, debate_id, r, 'dogz')
-            dogz_snapshot = self._maybe_snapshot('dogz', dogz_text, debate_id)
+            dogz_snapshot = self._maybe_snapshot('dogz', dogz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
             # Score based on difference (unique scores)
@@ -82,8 +82,8 @@ class DebateOrchestrator:
         katz_text, dogz_text = await asyncio.gather(a_task, b_task)
 
         # Take snapshots
-        ks = self._maybe_snapshot('katz', katz_text, debate_id)
-        ds = self._maybe_snapshot('dogz', dogz_text, debate_id)
+        ks = self._maybe_snapshot('katz', katz_text, debate_id, round_num)
+        ds = self._maybe_snapshot('dogz', dogz_text, debate_id, round_num)
 
         # Score them relative to each other
         score_k, score_d = self.score(katz_text, dogz_text, debate_id, round_num)
@@ -115,7 +115,7 @@ class DebateOrchestrator:
         await self._broadcast({'type': 'statement', 'debate_id': debate_id, 'agent': agent_name, 'text': text, 'ts': timestamp})
         return text
 
-    def _maybe_snapshot(self, agent_id: str, text: str, debate_id: str = None):
+    def _maybe_snapshot(self, agent_id: str, text: str, debate_id: str = None, round_num: int = None):
         try:
             ts = int(time.time())
             # Allow snapshot_fn to store debate context if it accepts it
@@ -124,6 +124,22 @@ class DebateOrchestrator:
             except TypeError:
                 # fallback to legacy signature
                 sid, summary = self.snapshot(agent_id, text, ts)
+
+            # Attach snapshot to current debate history when possible
+            try:
+                if debate_id and debate_id in self._current_debates:
+                    hist = self._current_debates[debate_id].setdefault('history', [])
+                    if round_num is not None:
+                        entry = next((h for h in hist if h.get('round') == round_num), None)
+                        if not entry:
+                            entry = {'round': round_num, 'katz': '', 'dogz': '', 'scores': {}}
+                            hist.append(entry)
+                        # store snapshot per-agent
+                        key = f"{agent_id}_snapshot"
+                        entry[key] = {'id': sid, 'summary': summary, 'ts': ts}
+            except Exception:
+                pass
+
             # broadcast asynchronously
             asyncio.create_task(self._broadcast({'type': 'snapshot_taken', 'debate_id': debate_id, 'agent': agent_id, 'snapshot_id': sid, 'summary': summary, 'ts': ts}))
             return sid

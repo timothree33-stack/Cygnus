@@ -88,12 +88,24 @@ export default function Debate() {
       }
     }
 
-    // ensure initial fetch
+    // ensure initial fetch and hydrate snapshots from history
     (async () => {
       if (debateId) {
         try {
           const res = await fetch(`${API_BASE}/api/debate/${debateId}/state`);
-          if (res.ok) setState(await res.json());
+          if (res.ok) {
+            const j = await res.json();
+            setState(j);
+            // hydrate snapshots from returned history entries
+            const snaps: any[] = [];
+            (j.history || []).forEach((h:any) => {
+              // look for per-agent snapshot keys we embed on the backend
+              ['katz_snapshot','dogz_snapshot'].forEach(k=>{
+                if(h[k]) snaps.push({id: h[k].id, agent: k.startsWith('katz') ? 'katz' : 'dogz', summary: h[k].summary, ts: h[k].ts});
+              });
+            });
+            if(snaps.length) setSnapshots(snaps);
+          }
         } catch (e) {}
       }
     })();
