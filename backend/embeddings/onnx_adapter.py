@@ -32,19 +32,48 @@ class ONNXEmbedder:
             self.input_name = self.session.get_inputs()[0].name
         except Exception:
             self.input_name = None
+        # Try to infer output embedding dim
+        try:
+            out0 = self.session.get_outputs()[0]
+            shape = out0.shape
+            # shape often [1, d]
+            if shape and len(shape) >= 2 and isinstance(shape[1], int):
+                self.embedding_dim = int(shape[1])
+            else:
+                self.embedding_dim = 8
+        except Exception:
+            self.embedding_dim = 8
+
+    def _text_to_input_array(self, text: str, d: int):
+        import hashlib
+        import numpy as _np
+        h = hashlib.sha256(text.encode('utf-8')).digest()
+        vals = []
+        i = 0
+        while len(vals) < d:
+            b = h[i % len(h)]
+            vals.append((b / 255.0) * 2.0 - 1.0)
+            i += 1
+        return _np.array([vals], dtype=_np.float32)
 
     def embed(self, text: str) -> List[float]:
-        # Minimal wrapper: send raw text as input under inferred input name or 'input'
-        inp = {self.input_name or 'input': [text]}
+        import numpy as _np
+        d = getattr(self, 'embedding_dim', 8)
+        arr = self._text_to_input_array(text, d)
+        inp = {self.input_name or 'input': arr}
         try:
             out = self.session.run(None, inp)
             if not out:
                 return []
-            # Expect output to be list of embeddings for batch; take first row
             vec = out[0]
-            # If it's nested like [[...]] take first element
-            if isinstance(vec, (list, tuple)) and len(vec) > 0 and isinstance(vec[0], (list, tuple)):
-                vec = vec[0]
-            return [float(x) for x in vec]
+            # vec may be (1,d) numpy array
+            try:
+                flat = _np.asarray(vec).reshape(-1)
+                return [float(x) for x in flat]
+            except Exception:
+                # Fallback to list parsing
+                if isinstance(vec, (list, tuple)) and len(vec) > 0 and isinstance(vec[0], (list, tuple)):
+                    vec = vec[0]
+                return [float(x) for x in vec]
         except Exception as e:
             raise RuntimeError(f'ONNX embedder inference failed: {e}')

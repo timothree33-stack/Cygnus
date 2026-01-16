@@ -37,6 +37,29 @@ def test_onnx_adapter_loads_and_runs(monkeypatch, tmp_path):
     assert v == fake_vec
 
 
+def test_onnx_adapter_with_real_model(tmp_path):
+    try:
+        import onnx  # ensure onnx available
+        import numpy as _np
+    except Exception:
+        pytest.skip('onnx or numpy not installed')
+
+    model_path = str(tmp_path / 'tiny_real.onnx')
+    # create a real tiny onnx model using the script
+    # We'll call the script programmatically
+    import subprocess
+    subprocess.check_call(['python', 'scripts/make_tiny_onnx.py', '--dim', '8', '--out', model_path])
+
+    os.environ['EMBEDDER_TYPE'] = 'onnx'
+    os.environ['EMBEDDER_ONNX_MODEL'] = model_path
+
+    from backend.embeddings import get_embedder
+    emb = get_embedder()
+    v = emb.embed('hello onnx real')
+    assert isinstance(v, list)
+    assert len(v) == 8
+
+
 def test_onnx_scoring_integration(monkeypatch, tmp_path):
     # Ensure score_pair uses the ONNX embedder when EMBEDDER_TYPE=onnx
     fake_vec_a = [0.1, 0.1, 0.1]
