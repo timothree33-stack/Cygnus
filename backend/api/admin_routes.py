@@ -370,6 +370,21 @@ async def nn_query(payload: Dict):
     Returns search results with id, score and meta.
     """
 
+@router.get('/memory/{message_id}')
+async def get_memory(message_id: str):
+    """Retrieve a memory/image row by id."""
+    cur = store._exec("SELECT id,agent_id,content,embedding,source,created_at FROM memories WHERE id = ?", (message_id,))
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail='memory not found')
+    d = dict(row)
+    if d.get('embedding'):
+        try:
+            d['embedding'] = json.loads(d['embedding'])
+        except Exception:
+            d['embedding'] = None
+    return d
+
 @router.delete('/memory/{message_id}')
 async def delete_memory(message_id: str):
     """Delete a memory/image row by id."""

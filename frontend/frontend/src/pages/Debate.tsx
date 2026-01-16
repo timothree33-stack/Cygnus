@@ -27,21 +27,47 @@ export default function Debate() {
         ws.onmessage = async (ev) => {
           try {
             const msg = JSON.parse(ev.data);
-            if (msg.type === 'scores_assigned' || msg.type === 'allcall_round' || msg.type === 'exchange') {
-              // Refresh full state for simplicity to ensure UI is consistent
-              const res = await fetch(`${API_BASE}/api/debate/${debateId}/state`);
-              if (res.ok) setState(await res.json());
+            if (msg.type === 'statement') {
+              // agent statement - append to relevant round entry
+              setState((s:any)=>{
+                if(!s) return s;
+                const history = [...(s.history||[])];
+                const r = msg.round || msg.round_num || msg.round;
+                let entry = history.find((h:any)=>h.round===r);
+                if(!entry){ entry = {round: r, katz: '', dogz: '', scores: {}}; history.push(entry); }
+                if(msg.agent === 'katz') entry.katz = msg.text;
+                if(msg.agent === 'dogz') entry.dogz = msg.text;
+                return {...s, history};
+              });
+            } else if (msg.type === 'scores_assigned') {
+              setState((s:any)=>{
+                if(!s) return s;
+                const history = [...(s.history||[])];
+                const r = msg.round;
+                const entry = history.find((h:any)=>h.round===r);
+                if(entry) entry.scores = msg.scores;
+                return {...s, history};
+              });
+            } else if (msg.type === 'allcall_round') {
+              setState((s:any)=>{
+                if(!s) return s;
+                const history = [...(s.history||[])];
+                history.push(msg.result);
+                return {...s, history};
+              });
             } else if (msg.type === 'snapshot_taken') {
-              // optionally show snapshot notifications (ignored for now)
-            } else if (msg.type === 'debate_started' && !debateId) {
-              // ignore
+              // append snapshot to snapshot list
+              setSnapshots((xs:any[])=>[{id: msg.snapshot_id, agent: msg.agent, summary: msg.summary, ts: msg.ts, debate_id: msg.debate_id}, ...xs]);
+            } else if (msg.type === 'debate_started') {
+              // set basic topic if not present
+              setState((s:any)=> ({...(s||{}), topic: msg.topic}));
             }
           } catch (e) { /* ignore malformed messages */ }
         };
         ws.onopen = () => { console.log('WS connected to debate', debateId); };
         ws.onclose = () => { console.log('WS closed for debate', debateId); };
       } catch (e) {
-        // On error, fallback to polling
+        // On error, fallback to polling once per second
         if (!pollRef.current) {
           pollRef.current = window.setInterval(async () => {
             try {
@@ -49,6 +75,12 @@ export default function Debate() {
               if (res.ok) {
                 const j = await res.json();
                 setState(j);
+                // hydrate snapshots from history if any
+                const snaps = [];
+                (j.history||[]).forEach((h:any)=>{
+                  if(h.snapshot_id) snaps.push({id:h.snapshot_id, agent:'', summary: h.katz||h.dogz||''});
+                });
+                setSnapshots(snaps);
               }
             } catch (e) {}
           }, 1000);
@@ -71,6 +103,22 @@ export default function Debate() {
       if (ws) { ws.close(); ws = null; }
     };
   }, [debateId]);
+
+  // Snapshot modal helpers
+  const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [snapshotModal, setSnapshotModal] = useState<{open:boolean,content?:string}>({open:false});
+
+  async function viewSnapshot(id:string){
+    try{
+      const r = await fetch(`${API_BASE}/api/admin/memory/${id}`);
+      if(r.ok){
+        const j = await r.json();
+        setSnapshotModal({open:true, content: j.content});
+      }else{
+        setSnapshotModal({open:true, content: 'Snapshot not found'});
+      }
+    }catch(e){ setSnapshotModal({open:true, content: 'Error fetching snapshot'}); }
+  }
 
   function genTopic() {
     setTopic(SAMPLE_TOPICS[Math.floor(Math.random()*SAMPLE_TOPICS.length)]);
@@ -149,21 +197,47 @@ export default function Debate() {
       <div style={{marginTop: 18}}>
         <h3>Topic: {state?.topic || topic || '(none)'}</h3>
         <p>Debate ID: <code>{debateId || '(not started)'}</code></p>
-        <div style={{border: '1px solid #ddd', padding: 12, borderRadius: 6, maxHeight: 400, overflow: 'auto'}}>
-          {history.length === 0 && <p className="muted">No rounds yet — start a debate or join one to see the timeline.</p>}
-          {history.map((r: any) => (
-            <div key={r.round} style={{marginBottom: 12}}>
-              <strong>Round {r.round}</strong>
-              <div style={{paddingLeft: 12}}>
-                <div><strong>Katz:</strong> {r.katz}</div>
-                <div><strong>Dogz:</strong> {r.dogz}</div>
-                <div><em>Scores:</em> Katz {r.scores?.katz} — Dogz {r.scores?.dogz}</div>
-                {foolEnabled && (r.round % 3 === 0) && (Math.random() < (jesterFreq/3)) && <div style={{color: '#b00', marginTop: 6}}><em>Court-Fool:</em> {generateQuip(r.round)}</div>}
+        <div style={{display:'flex', gap:12, marginTop:12}}>
+          <div style={{flex:1, border: '1px solid #ddd', padding: 12, borderRadius: 6, maxHeight: 400, overflow: 'auto'}}>
+            <h4>Timeline</h4>
+            {history.length === 0 && <p className="muted">No rounds yet — start a debate or join one to see the timeline.</p>}
+            {history.map((r: any, i:number) => (
+              <div key={i} style={{marginBottom: 12}}>
+                <strong>Round {r.round}</strong>
+                <div style={{paddingLeft: 12}}>
+                  <div><strong>Katz:</strong> {r.katz}</div>
+                  <div><strong>Dogz:</strong> {r.dogz}</div>
+                  <div><em>Scores:</em> Katz {r.scores?.katz} — Dogz {r.scores?.dogz}</div>
+                  {foolEnabled && (r.round % 3 === 0) && (Math.random() < (jesterFreq/3)) && <div style={{color: '#b00', marginTop: 6}}><em>Court-Fool:</em> {generateQuip(r.round)}</div>}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          <div style={{width: 320, border: '1px solid #eee', padding: 12, borderRadius: 6}}>
+            <h4>Snapshots</h4>
+            {snapshots.length === 0 && <p className="muted">No snapshots yet.</p>}
+            <ul>
+              {snapshots.map(s=> (
+                <li key={s.id} style={{marginBottom:8}}>
+                  <div><strong>{s.agent}</strong> — {s.summary}</div>
+                  <div style={{marginTop:6}}><button onClick={()=>viewSnapshot(s.id)}>View snapshot</button></div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
+
+      {snapshotModal.open && (
+        <div style={{position:'fixed', left:0, top:0, right:0, bottom:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <div style={{background:'#fff', padding:20, borderRadius:8, maxWidth:800}}>
+            <h3>Snapshot details</h3>
+            <div style={{whiteSpace:'pre-wrap', maxHeight: 400, overflow:'auto'}}>{snapshotModal.content}</div>
+            <div style={{textAlign:'right', marginTop:12}}><button onClick={()=>setSnapshotModal({open:false})}>Close</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
