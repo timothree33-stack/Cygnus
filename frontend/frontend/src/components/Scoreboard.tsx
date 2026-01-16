@@ -1,9 +1,11 @@
 import React from 'react';
 
-export default function Scoreboard({ history, onOpenMember }: { history: any[]; onOpenMember?: (round: any) => void }) {
+export default function Scoreboard({ history, onOpenMember, activeMembers }: { history: any[]; onOpenMember?: (round: any) => void; activeMembers?: any }) {
   // Detect rounds
   const rounds = (history || []).map(h => h.round).filter(r => r !== undefined);
   if (!rounds.length) return <div className="scoreboard muted">No rounds to show.</div>;
+
+  activeMembers = activeMembers || {};
 
   // Build per-team rows if members exist, otherwise fallback to Katz/Dogz
   const hasMembers = (history || []).some(h => Array.isArray(h.cats_members) || Array.isArray(h.dogs_members));
@@ -23,20 +25,22 @@ export default function Scoreboard({ history, onOpenMember }: { history: any[]; 
             </thead>
             <tbody>
               <tr>
-                <td><strong>Cats</strong> <small>(Katz team)</small></td>
+                <td title={activeMembers.katz ? `Active: ${activeMembers.katz}` : ''} style={{background: activeMembers.katz ? '#fff7e6' : undefined}}><strong>Cats</strong> <small>(Katz)</small> {activeMembers.katz && <span style={{marginLeft:6, color:'#b36b00'}}>✨ {activeMembers.katz}</span>}</td>
                 {rounds.map(r => {
                   const entry = history.find((h: any) => h.round === r) || {};
                   const val = entry.scores?.cats || entry.scores?.katz || 0;
-                  return <td key={r} style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)}>{val}</td>
+                  const member = entry.katz_member;
+                  return <td key={r} style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)} title={member ? `Speaker: ${member}` : ''}>{val}</td>
                 })}
                 <td style={{fontWeight:700, textAlign:'center'}}>{rounds.reduce((acc, r) => { const e = history.find((h:any)=>h.round===r)||{}; return acc + (e.scores?.cats||e.scores?.katz||0); }, 0)}</td>
               </tr>
               <tr>
-                <td><strong>Dogs</strong> <small>(Dogz team)</small></td>
+                <td title={activeMembers.dogz ? `Active: ${activeMembers.dogz}` : ''} style={{background: activeMembers.dogz ? '#f0f8ff' : undefined}}><strong>Dogs</strong> <small>(Dogz)</small> {activeMembers.dogz && <span style={{marginLeft:6, color:'#1b6ca8'}}>✨ {activeMembers.dogz}</span>}</td>
                 {rounds.map(r => {
                   const entry = history.find((h: any) => h.round === r) || {};
                   const val = entry.scores?.dogs || entry.scores?.dogz || 0;
-                  return <td key={r} style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)}>{val}</td>
+                  const member = entry.dogz_member;
+                  return <td key={r} style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)} title={member ? `Speaker: ${member}` : ''}>{val}</td>
                 })}
                 <td style={{fontWeight:700, textAlign:'center'}}>{rounds.reduce((acc, r) => { const e = history.find((h:any)=>h.round===r)||{}; return acc + (e.scores?.dogs||e.scores?.dogz||0); }, 0)}</td>
               </tr>

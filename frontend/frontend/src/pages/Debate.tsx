@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { API_BASE } from '../api';
+import Scoreboard from '../components/Scoreboard';
 
 const SAMPLE_TOPICS = [
   'Should work-from-home be the default?','Is AI regulation necessary now?','Space colonization: who leads?',
@@ -28,17 +29,29 @@ export default function Debate() {
           try {
             const msg = JSON.parse(ev.data);
             if (msg.type === 'statement') {
-              // agent statement - append to relevant round entry
+              // agent statement - append to relevant round entry and capture member info when present
               setState((s:any)=>{
                 if(!s) return s;
                 const history = [...(s.history||[])];
                 const r = msg.round || msg.round_num || msg.round;
                 let entry = history.find((h:any)=>h.round===r);
                 if(!entry){ entry = {round: r, katz: '', dogz: '', scores: {}}; history.push(entry); }
-                if(msg.agent === 'katz') entry.katz = msg.text;
-                if(msg.agent === 'dogz') entry.dogz = msg.text;
+                // allow for namespaced agent ids like 'katz:Alice' and msg.team/member
+                if(msg.team === 'katz' || msg.agent && msg.agent.startsWith('katz')) {
+                  entry.katz = msg.text;
+                  if (msg.member) entry.katz_member = msg.member;
+                  if (msg.agent) entry.katz_agent = msg.agent;
+                }
+                if(msg.team === 'dogz' || msg.agent && msg.agent.startsWith('dogz')) {
+                  entry.dogz = msg.text;
+                  if (msg.member) entry.dogz_member = msg.member;
+                  if (msg.agent) entry.dogz_agent = msg.agent;
+                }
                 return {...s, history};
               });
+            } else if (msg.type === 'member_changed') {
+              // update active member state
+              setState((s:any)=> ({...(s||{}), active_members: {...(s?.active_members||{}), [msg.team]: msg.member_name}}));
             } else if (msg.type === 'scores_assigned') {
               setState((s:any)=>{
                 if(!s) return s;
@@ -280,28 +293,8 @@ export default function Debate() {
                 <div style={{overflowX:'auto'}}>
                   {/* Use new component when available */}
                   <div style={{marginTop:8}}>
-                    {/* Fallback to the simple table for now; Scoreboard component will render the nicer UI when loaded */}
-                    <table style={{width:'100%', borderCollapse:'collapse'}}>
-                      <thead>
-                        <tr>
-                          <th style={{borderBottom:'1px solid #ddd'}}>Team</th>
-                          {sb.rounds.map((r:any)=> <th key={r} style={{borderBottom:'1px solid #ddd'}}>Inning {r}</th>)}
-                          <th style={{borderBottom:'1px solid #ddd'}}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{fontWeight:700}}>Cats (Katz)</td>
-                          {sb.rows.katz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
-                          <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.katz.total}</td>
-                        </tr>
-                        <tr>
-                          <td style={{fontWeight:700}}>Dogs (Dogz)</td>
-                          {sb.rows.dogz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
-                          <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.dogz.total}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <Scoreboard history={history} onOpenMember={(entry:any)=>setMemberPanelRound(entry)} activeMembers={state?.active_members || {}} />
+                  </div>
                   </div>
                 </div>
               )
