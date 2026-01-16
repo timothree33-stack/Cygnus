@@ -170,6 +170,31 @@ async def delete_agent_message(agent_id: str, message_id: str):
     ok = store.delete_memory(message_id)
     return {"deleted": bool(ok)}
 
+# --- Persona helpers ---
+@router.post('/agents/{agent_id}/persona')
+async def add_agent_persona(agent_id: str, payload: Dict):
+    """Add a persona entry for an agent. Payload: {text: '...'}"""
+    text = (payload.get('text') or '').strip()
+    if not text:
+        raise HTTPException(status_code=400, detail='text required')
+    mid = store.save_memory(agent_id, text, embedding=None, source='persona')
+    return {"saved": mid}
+
+@router.get('/agents/{agent_id}/persona')
+async def list_agent_persona(agent_id: str, limit: int = 50):
+    """List persona entries for an agent, newest first."""
+    all_mem = store.get_memories(agent_id)
+    persona = [m for m in all_mem if m.get('source') == 'persona'][:limit]
+    return {"persona": persona}
+
+@router.delete('/memory/{memory_id}')
+async def delete_memory(memory_id: str):
+    """Delete a memory by id (global). Returns {deleted: true/false}."""
+    ok = store.delete_memory(memory_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail='memory not found')
+    return {"deleted": True}
+
 @router.get('/image-embeddings')
 async def list_image_embeddings(debate_id: str = None):
     """List saved image embeddings, optionally filtered by debate_id."""
