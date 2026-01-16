@@ -38,12 +38,14 @@ class DebateOrchestrator:
         except Exception:
             return None
 
-    async def run_debate(self, debate_id: str, topic: str, rounds: int = 5, pause_sec: int = 60):
+    async def run_debate(self, debate_id: str, topic: str, rounds: int = 5, pause_sec: int = 60, katz_members: list | None = None, dogz_members: list | None = None):
         """Run a debate with given number of rounds and pause between statements.
+        Supports per-team member rotation. `katz_members` and `dogz_members` are lists of member names.
         Emits broadcast events for UI:
             - debate_started
             - round_started
-            - statement (agent, text, timestamp)
+            - member_changed (team, member_name, member_index)
+            - statement (agent, member, text, timestamp)
             - snapshot_taken (agent, snapshot_id, summary)
             - scores_assigned (round, scores)
             - allcall_round (list of exchanges)
@@ -55,13 +57,34 @@ class DebateOrchestrator:
             'pause_sec': pause_sec,
             'round': 0,
             'history': [],
-            'mode': 'normal'
+            'mode': 'normal',
+            'katz_members': katz_members or [],
+            'dogz_members': dogz_members or [],
+            'active_members': {'katz': None, 'dogz': None}
         }
         self._current_debates[debate_id] = state
         await self._broadcast({'type': 'debate_started', 'debate_id': debate_id, 'topic': topic})
 
         for r in range(1, rounds+1):
             state['round'] = r
+            # compute active member for each team and broadcast change if different
+            def pick_active(members, rnd):
+                if not members:
+                    return None, None
+                idx = (rnd - 1) % len(members)
+                return members[idx], idx
+
+            katz_member, katz_idx = pick_active(state['katz_members'], r)
+            dogz_member, dogz_idx = pick_active(state['dogz_members'], r)
+
+            # Broadcast changes if different from last seen
+            if state['active_members'].get('katz') != katz_member:
+                state['active_members']['katz'] = katz_member
+                await self._broadcast({'type': 'member_changed', 'debate_id': debate_id, 'team': 'katz', 'member_name': katz_member, 'member_index': katz_idx, 'ts': time.time()})
+            if state['active_members'].get('dogz') != dogz_member:
+                state['active_members']['dogz'] = dogz_member
+                await self._broadcast({'type': 'member_changed', 'debate_id': debate_id, 'team': 'dogz', 'member_name': dogz_member, 'member_index': dogz_idx, 'ts': time.time()})
+
             await self._broadcast({'type': 'round_started', 'debate_id': debate_id, 'round': r})
 
             # Ensure we have a store to persist debate/round data
@@ -77,14 +100,14 @@ class DebateOrchestrator:
                 state['mode'] = 'normal'
 
             # KatZ speaks (Pro)
-            katz_text, katz_arg_id = await self._ask_agent(self.katz, topic, debate_id, r, 'katz', round_id)
+            katz_text, katz_arg_id = await self._ask_agent(self.katz, topic, debate_id, r, 'katz', round_id, member_name=katz_member)
             # Snapshot & timestamp
-            katz_snapshot = self._maybe_snapshot('katz', katz_text, debate_id, r)
+            katz_snapshot = self._maybe_snapshot(f'katz:{katz_member}' if katz_member else 'katz', katz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
             # DogZ speaks (Antithesis)
-            dogz_text, dogz_arg_id = await self._ask_agent(self.dogz, topic, debate_id, r, 'dogz', round_id)
-            dogz_snapshot = self._maybe_snapshot('dogz', dogz_text, debate_id, r)
+            dogz_text, dogz_arg_id = await self._ask_agent(self.dogz, topic, debate_id, r, 'dogz', round_id, member_name=dogz_member)
+            dogz_snapshot = self._maybe_snapshot(f'dogz:{dogz_member}' if dogz_member else 'dogz', dogz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
             # Score based on difference (unique scores)
@@ -98,11 +121,11 @@ class DebateOrchestrator:
                     # insert across arguments (create argument_scores and update debate_tallies)
                     sid_k = store.add_score(katz_arg_id, score_k, confidence=1.0)
                     sid_d = store.add_score(dogz_arg_id, score_d, confidence=1.0)
-                    store.add_or_update_tally(debate_id, store.ensure_agent('katz'), score_k)
-                    store.add_or_update_tally(debate_id, store.ensure_agent('dogz'), score_d)
+                    # use namespaced agent ids so tallies are per-member
+                    store.add_or_update_tally(debate_id, store.ensure_agent(f'katz:{katz_member}' if katz_member else 'katz', role='katz'), score_k)
+                    store.add_or_update_tally(debate_id, store.ensure_agent(f'dogz:{dogz_member}' if dogz_member else 'dogz', role='dogz'), score_d)
             except Exception:
                 pass
-
         # Final synthesis by Hiemdall (cygnus)
         final_synthesis = await self._ask_agent(self.cygnus, topic, debate_id, 'final', 'cygnus')
         await self._broadcast({'type': 'debate_finished', 'debate_id': debate_id, 'final': final_synthesis, 'history': state['history']})
@@ -111,14 +134,26 @@ class DebateOrchestrator:
     async def _run_allcall_round(self, debate_id: str, topic: str, round_num: int):
         """Run an All Call round where all agents respond simultaneously to a short prompt."""
         await self._broadcast({'type': 'allcall_round_started', 'debate_id': debate_id, 'round': round_num})
+        # Determine active members for the round if available
+        katz_member = None
+        dogz_member = None
+        if debate_id in self._current_debates:
+            s = self._current_debates[debate_id]
+            km = s.get('katz_members', [])
+            dm = s.get('dogz_members', [])
+            if km:
+                katz_member = km[(round_num - 1) % len(km)]
+            if dm:
+                dogz_member = dm[(round_num - 1) % len(dm)]
+
         # Concurrently gather both agents responses
-        a_task = asyncio.create_task(self._ask_agent(self.katz, topic, debate_id, round_num, 'katz'))
-        b_task = asyncio.create_task(self._ask_agent(self.dogz, topic, debate_id, round_num, 'dogz'))
+        a_task = asyncio.create_task(self._ask_agent(self.katz, topic, debate_id, round_num, 'katz', member_name=katz_member))
+        b_task = asyncio.create_task(self._ask_agent(self.dogz, topic, debate_id, round_num, 'dogz', member_name=dogz_member))
         katz_text, dogz_text = await asyncio.gather(a_task, b_task)
 
         # Take snapshots
-        ks = self._maybe_snapshot('katz', katz_text, debate_id, round_num)
-        ds = self._maybe_snapshot('dogz', dogz_text, debate_id, round_num)
+        ks = self._maybe_snapshot(f'katz:{katz_member}' if katz_member else 'katz', katz_text, debate_id, round_num)
+        ds = self._maybe_snapshot(f'dogz:{dogz_member}' if dogz_member else 'dogz', dogz_text, debate_id, round_num)
 
         # Score them relative to each other
         score_k, score_d = self.score(katz_text, dogz_text, debate_id, round_num)
@@ -135,34 +170,41 @@ class DebateOrchestrator:
             return True
         return False
 
-    async def _ask_agent(self, agent, topic, debate_id, round_num, agent_name, round_id=None):
+    async def _ask_agent(self, agent, topic, debate_id, round_num, agent_name, round_id=None, member_name: str = None):
         """Ask an agent to respond. Agents may be objects with `respond` coroutine or simple callables.
         Returns tuple (text, argument_id_or_None) where argument_id is persisted when a store is available.
+        `member_name` is optional and indicates which team member is speaking.
         """
         start = time.time()
         try:
             if hasattr(agent, 'respond'):
-                text = await agent.respond(topic=topic, debate_id=debate_id, round=round_num)
+                # Pass member context to agent if available
+                if member_name is not None:
+                    text = await agent.respond(topic=topic, debate_id=debate_id, round=round_num, member=member_name)
+                else:
+                    text = await agent.respond(topic=topic, debate_id=debate_id, round=round_num)
             else:
                 # fallback: call as coroutine function
                 text = await agent(topic)
         except Exception as e:
             text = f"(agent error: {e})"
         timestamp = time.time()
-        await self._broadcast({'type': 'statement', 'debate_id': debate_id, 'agent': agent_name, 'text': text, 'ts': timestamp})
+        # broadcast agent as namespaced team:member when member present
+        agent_id = f"{agent_name}:{member_name}" if member_name else agent_name
+        await self._broadcast({'type': 'statement', 'debate_id': debate_id, 'agent': agent_id, 'team': agent_name, 'member': member_name, 'text': text, 'ts': timestamp})
 
         # Persist argument to store when available
         arg_id = None
         try:
             store = await self._ensure_store()
             if store:
-                agent_uuid = store.ensure_agent(agent_name)
+                agent_key = f"{agent_name}:{member_name}" if member_name else agent_name
+                agent_uuid = store.ensure_agent(agent_key, role=agent_name)
                 arg_id = store.add_argument(round_id, agent_uuid, text) if round_id else None
         except Exception:
             arg_id = None
 
         return text, arg_id
-
     def _maybe_snapshot(self, agent_id: str, text: str, debate_id: str = None, round_num: int = None):
         try:
             ts = int(time.time())

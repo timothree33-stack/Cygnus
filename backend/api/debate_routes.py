@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/debate")
 DEBATES = {}
 
 @router.post('/start')
-async def start_debate(background_tasks: BackgroundTasks, topic: Optional[str] = None, rounds: int = 5, pause_sec: Optional[int] = None):
+async def start_debate(background_tasks: BackgroundTasks, topic: Optional[str] = None, rounds: int = 5, pause_sec: Optional[int] = None, katz_members: Optional[str] = None, dogz_members: Optional[str] = None):
     if not topic:
         topic = "(random topic)"
     # Persist debate to DB and use its id
@@ -27,16 +27,25 @@ async def start_debate(background_tasks: BackgroundTasks, topic: Optional[str] =
     # Try to pull pause from env if not provided
     pause = int(os.environ.get('DEBATE_PAUSE_SEC', '60')) if pause_sec is None else pause_sec
 
+    # Parse optional member lists (comma-separated)
+    def parse_members(s: Optional[str]):
+        if not s:
+            return []
+        return [m.strip() for m in s.split(',') if m.strip()]
+
+    katz_list = parse_members(katz_members)
+    dogz_list = parse_members(dogz_members)
+
     # Resolve orchestrator from main module to avoid circular imports
     try:
         from ..main import orchestrator
     except Exception:
         raise HTTPException(status_code=500, detail='orchestrator_unavailable')
 
-    # run in background
-    background_tasks.add_task(orchestrator.run_debate, did, topic, rounds, pause)
-    DEBATES[did] = {'topic': topic, 'rounds': rounds, 'pause_sec': pause, 'state': 'started'}
-    return {'debate_id': did, 'status': 'started', 'topic': topic}
+    # run in background with optional members
+    background_tasks.add_task(orchestrator.run_debate, did, topic, rounds, pause, katz_list, dogz_list)
+    DEBATES[did] = {'topic': topic, 'rounds': rounds, 'pause_sec': pause, 'state': 'started', 'katz_members': katz_list, 'dogz_members': dogz_list}
+    return {'debate_id': did, 'status': 'started', 'topic': topic, 'katz_members': katz_list, 'dogz_members': dogz_list}
 
 @router.get('/{debate_id}/state')
 async def get_state(debate_id: str):
