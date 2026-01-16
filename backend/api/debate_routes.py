@@ -35,6 +35,17 @@ async def get_state(debate_id: str):
     s = DEBATES.get(debate_id)
     if not s:
         raise HTTPException(status_code=404, detail='debate not found')
+
+    # If an orchestrator instance is available, merge in live state (history, round, etc.)
+    try:
+        from ..main import orchestrator as orch
+        if hasattr(orch, '_current_debates') and debate_id in orch._current_debates:
+            merged = dict(s)
+            merged.update(orch._current_debates[debate_id])
+            return merged
+    except Exception:
+        pass
+
     return s
 
 @router.post('/{debate_id}/pause')
