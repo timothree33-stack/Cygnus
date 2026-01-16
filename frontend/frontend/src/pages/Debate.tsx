@@ -12,6 +12,7 @@ export default function Debate() {
   const [state, setState] = useState<any>(null);
   const [foolEnabled, setFoolEnabled] = useState(false);
   const [pauseSec, setPauseSec] = useState<number>(1);
+  const [jesterFreq, setJesterFreq] = useState<number>(1); // 0-3 per 3 rounds
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -86,6 +87,9 @@ export default function Debate() {
         <label style={{marginLeft: 8}}>
           Pause (sec): <input type="number" value={pauseSec} min={1} max={60} onChange={(e)=>setPauseSec(parseInt(e.target.value||'1'))} style={{width: 60, marginLeft: 6}} />
         </label>
+        <label style={{marginLeft: 8}}>
+          Jester (per 3 rounds): <input type="number" value={jesterFreq} min={0} max={3} onChange={(e)=>setJesterFreq(parseInt(e.target.value||'1'))} style={{width: 60, marginLeft: 6}} />
+        </label>
         <button onClick={startDebate} style={{marginLeft: 8}}>Start</button>
       </div>
 
@@ -116,7 +120,7 @@ export default function Debate() {
                 <div><strong>Katz:</strong> {r.katz}</div>
                 <div><strong>Dogz:</strong> {r.dogz}</div>
                 <div><em>Scores:</em> Katz {r.scores?.katz} — Dogz {r.scores?.dogz}</div>
-                {foolEnabled && (r.round % 3 === 0) && <div style={{color: '#b00', marginTop: 6}}><em>Court-Fool:</em> {generateQuip(r.round)}</div>}
+                {foolEnabled && (r.round % 3 === 0) && (Math.random() < (jesterFreq/3)) && <div style={{color: '#b00', marginTop: 6}}><em>Court-Fool:</em> {generateQuip(r.round)}</div>}
               </div>
             </div>
           ))}
