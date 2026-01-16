@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from ..db.sqlite_store import SQLiteStore
 from .admin_routes import verify_admin_key
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(verify_admin_key)])
+router = APIRouter(dependencies=[Depends(verify_admin_key)])  # Include into admin router so paths are under /api/admin
 
 # Compatibility conversation endpoints for the frontend
 @router.post('/agents/{agent_id}/message')
