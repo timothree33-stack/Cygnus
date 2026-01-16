@@ -125,6 +125,7 @@ export default function Debate() {
   const [snapshotModal, setSnapshotModal] = useState<{open:boolean,content?:string}>({open:false});
   const [finalSynthesis, setFinalSynthesis] = useState<string | null>(null);
   const [showFinalModal, setShowFinalModal] = useState(false);
+  const [memberPanelRound, setMemberPanelRound] = useState<any | null>(null);
 
   function computeScoreboard(history:any[]) {
     const rounds = history.map((h:any)=>h.round || 0).sort((a:number,b:number)=>a-b);
@@ -269,32 +270,39 @@ export default function Debate() {
 
           <div style={{width: 320, border: '1px solid #eee', padding: 12, borderRadius: 6}}>
             <h4>Scoreboard</h4>
+            <div>
+              <button onClick={()=>{ if(history && history.length) setMemberPanelRound(history[history.length-1])}}>Open Member Panel (latest round)</button>
+            </div>
             {(() => {
               const sb = computeScoreboard(history);
               if(!sb.rounds.length) return <p className="muted">No rounds to show.</p>;
               return (
                 <div style={{overflowX:'auto'}}>
-                  <table style={{width:'100%', borderCollapse:'collapse'}}>
-                    <thead>
-                      <tr>
-                        <th style={{borderBottom:'1px solid #ddd'}}>Team</th>
-                        {sb.rounds.map((r:any)=> <th key={r} style={{borderBottom:'1px solid #ddd'}}>Inning {r}</th>)}
-                        <th style={{borderBottom:'1px solid #ddd'}}>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{fontWeight:700}}>Cats (Katz)</td>
-                        {sb.rows.katz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
-                        <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.katz.total}</td>
-                      </tr>
-                      <tr>
-                        <td style={{fontWeight:700}}>Dogs (Dogz)</td>
-                        {sb.rows.dogz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
-                        <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.dogz.total}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  {/* Use new component when available */}
+                  <div style={{marginTop:8}}>
+                    {/* Fallback to the simple table for now; Scoreboard component will render the nicer UI when loaded */}
+                    <table style={{width:'100%', borderCollapse:'collapse'}}>
+                      <thead>
+                        <tr>
+                          <th style={{borderBottom:'1px solid #ddd'}}>Team</th>
+                          {sb.rounds.map((r:any)=> <th key={r} style={{borderBottom:'1px solid #ddd'}}>Inning {r}</th>)}
+                          <th style={{borderBottom:'1px solid #ddd'}}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{fontWeight:700}}>Cats (Katz)</td>
+                          {sb.rows.katz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
+                          <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.katz.total}</td>
+                        </tr>
+                        <tr>
+                          <td style={{fontWeight:700}}>Dogs (Dogz)</td>
+                          {sb.rows.dogz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
+                          <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.dogz.total}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )
             })()}
@@ -326,6 +334,33 @@ export default function Debate() {
             <h3>Snapshot details</h3>
             <div style={{whiteSpace:'pre-wrap', maxHeight: 400, overflow:'auto'}}>{snapshotModal.content}</div>
             <div style={{textAlign:'right', marginTop:12}}><button onClick={()=>setSnapshotModal({open:false})}>Close</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* Member detail panel */}
+      {memberPanelRound && (
+        <div>
+          {/* Lazy load MemberDetailPanel */}
+          <div style={{position:'fixed', right:20, top:80}}>
+            <div style={{background:'#fff', border:'1px solid #ccc', padding:8}}>
+              <h4>Member Panel (Round {memberPanelRound.round})</h4>
+              <div style={{display:'flex', gap:8}}>
+                <div style={{flex:1}}>
+                  <h5>Cats</h5>
+                  {(memberPanelRound.cats_members||[]).map((m:any,i:number)=> (
+                    <div key={i}><strong>{m.name||`Member ${i+1}`}</strong>: {m.text} • Score {m.score}</div>
+                  ))}
+                </div>
+                <div style={{flex:1}}>
+                  <h5>Dogs</h5>
+                  {(memberPanelRound.dogs_members||[]).map((m:any,i:number)=> (
+                    <div key={i}><strong>{m.name||`Member ${i+1}`}</strong>: {m.text} • Score {m.score}</div>
+                  ))}
+                </div>
+              </div>
+              <div style={{textAlign:'right', marginTop:8}}><button onClick={()=>setMemberPanelRound(null)}>Close</button></div>
+            </div>
           </div>
         </div>
       )}
