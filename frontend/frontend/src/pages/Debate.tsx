@@ -58,6 +58,10 @@ export default function Debate() {
             } else if (msg.type === 'snapshot_taken') {
               // append snapshot to snapshot list
               setSnapshots((xs:any[])=>[{id: msg.snapshot_id, agent: msg.agent, summary: msg.summary, ts: msg.ts, debate_id: msg.debate_id}, ...xs]);
+            } else if (msg.type === 'debate_finished') {
+              // show final synthesis and update history
+              setState((s:any)=> ({...(s||{}), history: msg.history || s?.history || [], final: msg.final}));
+              setFinalSynthesis(msg.final);
             } else if (msg.type === 'debate_started') {
               // set basic topic if not present
               setState((s:any)=> ({...(s||{}), topic: msg.topic}));
@@ -119,6 +123,19 @@ export default function Debate() {
   // Snapshot modal helpers
   const [snapshots, setSnapshots] = useState<any[]>([]);
   const [snapshotModal, setSnapshotModal] = useState<{open:boolean,content?:string}>({open:false});
+  const [finalSynthesis, setFinalSynthesis] = useState<string | null>(null);
+  const [showFinalModal, setShowFinalModal] = useState(false);
+
+  function computeScoreboard(history:any[]) {
+    const rounds = history.map((h:any)=>h.round || 0).sort((a:number,b:number)=>a-b);
+    const rows = {
+      katz: {scores: rounds.map(r=>{ const e = history.find((h:any)=>h.round===r); return e?.scores?.katz || 0; }), total:0},
+      dogz: {scores: rounds.map(r=>{ const e = history.find((h:any)=>h.round===r); return e?.scores?.dogz || 0; }), total:0}
+    };
+    rows.katz.total = rows.katz.scores.reduce((s:any,x:any)=>s + (x||0), 0);
+    rows.dogz.total = rows.dogz.scores.reduce((s:any,x:any)=>s + (x||0), 0);
+    return {rounds, rows};
+  }
 
   async function viewSnapshot(id:string){
     try{
@@ -150,6 +167,11 @@ export default function Debate() {
       }
     }catch(e){ alert('Camera capture error'); }
   }
+
+  // Final synthesis modal
+  useEffect(()=>{
+    if(finalSynthesis) setShowFinalModal(true);
+  },[finalSynthesis]);
 
   function genTopic() {
     setTopic(SAMPLE_TOPICS[Math.floor(Math.random()*SAMPLE_TOPICS.length)]);
@@ -243,6 +265,39 @@ export default function Debate() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div style={{width: 320, border: '1px solid #eee', padding: 12, borderRadius: 6}}>
+            <h4>Scoreboard</h4>
+            {(() => {
+              const sb = computeScoreboard(history);
+              if(!sb.rounds.length) return <p className="muted">No rounds to show.</p>;
+              return (
+                <div style={{overflowX:'auto'}}>
+                  <table style={{width:'100%', borderCollapse:'collapse'}}>
+                    <thead>
+                      <tr>
+                        <th style={{borderBottom:'1px solid #ddd'}}>Team</th>
+                        {sb.rounds.map((r:any)=> <th key={r} style={{borderBottom:'1px solid #ddd'}}>Inning {r}</th>)}
+                        <th style={{borderBottom:'1px solid #ddd'}}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{fontWeight:700}}>Cats (Katz)</td>
+                        {sb.rows.katz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
+                        <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.katz.total}</td>
+                      </tr>
+                      <tr>
+                        <td style={{fontWeight:700}}>Dogs (Dogz)</td>
+                        {sb.rows.dogz.scores.map((s:any,i:number)=>(<td key={i} style={{textAlign:'center'}}>{s}</td>))}
+                        <td style={{textAlign:'center', fontWeight:700}}>{sb.rows.dogz.total}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
           </div>
 
           <div style={{width: 320, border: '1px solid #eee', padding: 12, borderRadius: 6}}>

@@ -25,4 +25,13 @@ test('debate: full 5-round flow (smoke)', async ({ page, request }) => {
   // Wait for round 5 to appear (or until timeout)
   await page.waitForSelector('text=Round 5', { timeout: 30000 });
   await expect(page.getByText('Round 5', { exact: true })).toBeVisible();
+
+  // Verify scoreboard updated and visible
+  await expect(page.getByText('Scoreboard')).toBeVisible();
+  // Wait for at least one inning cell to be populated (score >= 0 shown)
+  await page.waitForSelector('table tbody tr td', { timeout: 30000 });
+  const totalCats = await page.locator('text=Cats (Katz)').locator('xpath=../td[last()]').innerText();
+  const totalDogs = await page.locator('text=Dogs (Dogz)').locator('xpath=../td[last()]').innerText();
+  expect(parseInt(totalCats || '0')).toBeGreaterThanOrEqual(0);
+  expect(parseInt(totalDogs || '0')).toBeGreaterThanOrEqual(0);
 });
