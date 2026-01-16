@@ -19,3 +19,14 @@ async def test_manager_download_and_launch(tmp_path):
     model_id = await mgr.launch_model(m)
     status = await mgr.get_model_status(model_id)
     assert status.get('status') == 'running'
+
+
+@pytest.mark.asyncio
+async def test_manager_with_dummy_backend(tmp_path):
+    mgr = Manager(model_cache=str(tmp_path))
+    await mgr.initialize()
+    # use name 'tiny' to trigger DummyBackend (test hook)
+    m = ModelManifest(name="tiny", version="0.0.1", source_url="file://local/tiny", format="dummy")
+    model_id = await mgr.launch_model(m)
+    resp = await mgr.call_model(model_id, "hello")
+    assert "dummy-response-to:hello" in resp
