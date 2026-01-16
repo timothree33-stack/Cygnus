@@ -33,6 +33,7 @@
     "jsdom": "^27.4.0",
     "vitest": "^4.0.17",
     "playwright": "^1.44.0",
-    "@playwright/test": "^1.44.0"
+    "@playwright/test": "^1.44.0",
+    "ws": "^9.0.0"
   }
 }

@@ -1,4 +1,6 @@
 import React from 'react';
+import Tooltip from './Tooltip';
+import '../styles/scoreboard.css';
 
 export default function Scoreboard({ history, onOpenMember, activeMembers }: { history: any[]; onOpenMember?: (round: any) => void; activeMembers?: any }) {
   // Detect rounds
@@ -25,12 +27,23 @@ export default function Scoreboard({ history, onOpenMember, activeMembers }: { h
             </thead>
             <tbody>
               <tr>
-                <td title={activeMembers.katz ? `Active: ${activeMembers.katz}` : ''} style={{background: activeMembers.katz ? '#fff7e6' : undefined}}><strong>Cats</strong> <small>(Katz)</small> {activeMembers.katz && <span style={{marginLeft:6, color:'#b36b00'}}>✨ {activeMembers.katz}</span>}</td>
+                <td className={`sb-team-active`} style={{background: activeMembers.katz ? '#fff7e6' : undefined}}>
+                  <Tooltip label={activeMembers.katz ? `Active: ${activeMembers.katz}` : 'Cats team'}>
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <strong>Cats</strong> <small style={{opacity:0.7}}>(Katz)</small>
+                      {activeMembers.katz && <span className="sb-badge" aria-hidden>{'✨ ' + activeMembers.katz}</span>}
+                    </div>
+                  </Tooltip>
+                </td>
                 {rounds.map(r => {
                   const entry = history.find((h: any) => h.round === r) || {};
                   const val = entry.scores?.cats || entry.scores?.katz || 0;
                   const member = entry.katz_member;
-                  return <td key={r} style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)} title={member ? `Speaker: ${member}` : ''}>{val}</td>
+                  <td key={r} className="sb-cell" style={{textAlign:'center'}} onClick={() => onOpenMember && onOpenMember(entry)}>
+                    <Tooltip label={member ? `Speaker: ${member}` : `Round ${r}`}>{
+                      <div>{val}</div>
+                    }</Tooltip>
+                  </td>
                 })}
                 <td style={{fontWeight:700, textAlign:'center'}}>{rounds.reduce((acc, r) => { const e = history.find((h:any)=>h.round===r)||{}; return acc + (e.scores?.cats||e.scores?.katz||0); }, 0)}</td>
               </tr>
