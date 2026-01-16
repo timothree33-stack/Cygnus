@@ -14,7 +14,8 @@ test('debate: snapshot modal opens', async ({ page, request }) => {
   await page.fill('input[placeholder="Or paste debate id to join"]', debateId);
   await page.click('text=Join');
 
-  // Wait for a snapshot item to appear and then open it
+  // Trigger a camera capture and then open the resulting snapshot
+  await page.click('button:has-text("Capture from camera")');
   await page.waitForSelector('button:has-text("View snapshot")', { timeout: 20000 });
   await page.click('button:has-text("View snapshot")');
   await page.waitForSelector('text=Snapshot details', { timeout: 5000 });

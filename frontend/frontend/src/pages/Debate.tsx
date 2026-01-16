@@ -132,6 +132,25 @@ export default function Debate() {
     }catch(e){ setSnapshotModal({open:true, content: 'Error fetching snapshot'}); }
   }
 
+  async function captureFromCamera(){
+    if(!debateId) return alert('Join or start a debate first');
+    try{
+      const res = await fetch(`${API_BASE}/api/debate/${debateId}/camera-capture`, {method: 'POST'});
+      if(res.ok){
+        const j = await res.json();
+        // Build a small snapshot placeholder and prepend
+        const s = { id: j.memory_id || j.image_saved, agent: 'camera', summary: j.memory_id ? 'Camera snapshot' : 'Image captured', ts: Date.now() };
+        setSnapshots(xs => [s, ...xs]);
+        // open modal directly with snapshot memory if available
+        if(j.memory_id) {
+          viewSnapshot(j.memory_id);
+        }
+      }else{
+        alert('Camera capture failed');
+      }
+    }catch(e){ alert('Camera capture error'); }
+  }
+
   function genTopic() {
     setTopic(SAMPLE_TOPICS[Math.floor(Math.random()*SAMPLE_TOPICS.length)]);
   }
@@ -228,12 +247,17 @@ export default function Debate() {
 
           <div style={{width: 320, border: '1px solid #eee', padding: 12, borderRadius: 6}}>
             <h4>Snapshots</h4>
+            <div style={{marginBottom: 8}}>
+              <button onClick={async ()=>{ if(!debateId) return alert('Join or start a debate first'); await captureFromCamera(); }}>📸 Capture from camera</button>
+            </div>
             {snapshots.length === 0 && <p className="muted">No snapshots yet.</p>}
             <ul>
               {snapshots.map(s=> (
                 <li key={s.id} style={{marginBottom:8}}>
                   <div><strong>{s.agent}</strong> — {s.summary}</div>
-                  <div style={{marginTop:6}}><button onClick={()=>viewSnapshot(s.id)}>View snapshot</button></div>
+                  <div style={{marginTop:6}}>
+                    <button onClick={()=>viewSnapshot(s.id)}>View snapshot</button>
+                  </div>
                 </li>
               ))}
             </ul>

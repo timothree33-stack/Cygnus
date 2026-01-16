@@ -34,7 +34,7 @@
         - checkbox "Enable Court-Fool (Quips)" [ref=e23]
         - text: Enable Court-Fool (Quips)
       - generic [ref=e24]:
-        - textbox "Or paste debate id to join" [ref=e25]: 373fb702-533f-4026-98c6-90a6b9a04a67
+        - textbox "Or paste debate id to join" [ref=e25]: 6bf3a285-9f46-4223-8024-fa4c09bce291
         - button "Join" [active] [ref=e26]
         - button "Pause" [ref=e27]
         - button "Resume" [ref=e28]
@@ -43,13 +43,36 @@
         - 'heading "Topic: (random topic)" [level=3] [ref=e31]'
         - paragraph [ref=e32]:
           - text: "Debate ID:"
-          - code [ref=e33]: 373fb702-533f-4026-98c6-90a6b9a04a67
+          - code [ref=e33]: 6bf3a285-9f46-4223-8024-fa4c09bce291
         - generic [ref=e34]:
           - generic [ref=e35]:
             - heading "Timeline" [level=4] [ref=e36]
-            - paragraph [ref=e37]: No rounds yet — start a debate or join one to see the timeline.
-          - generic [ref=e38]:
-            - heading "Snapshots" [level=4] [ref=e39]
-            - paragraph [ref=e40]: No snapshots yet.
+            - generic [ref=e37]:
+              - strong [ref=e38]: Round 1
+              - generic [ref=e39]:
+                - generic [ref=e40]:
+                  - strong [ref=e41]: "Katz:"
+                  - text: Katz responds to '(random topic)' (round 1)
+                - generic [ref=e42]:
+                  - strong [ref=e43]: "Dogz:"
+                  - text: Dogz responds to '(random topic)' (round 1)
+                - generic [ref=e44]:
+                  - emphasis [ref=e45]: "Scores:"
+                  - text: Katz 26 — Dogz 25
+            - generic [ref=e46]:
+              - strong [ref=e47]: Round 2
+              - generic [ref=e48]:
+                - generic [ref=e49]:
+                  - strong [ref=e50]: "Katz:"
+                  - text: Katz responds to '(random topic)' (round 2)
+                - generic [ref=e51]:
+                  - strong [ref=e52]: "Dogz:"
+                  - text: Dogz responds to '(random topic)' (round 2)
+                - generic [ref=e53]:
+                  - emphasis [ref=e54]: "Scores:"
+                  - text: Katz 26 — Dogz 25
+          - generic [ref=e55]:
+            - heading "Snapshots" [level=4] [ref=e56]
+            - paragraph [ref=e57]: No snapshots yet.
             - list
 ```
