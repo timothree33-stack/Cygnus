@@ -369,6 +369,13 @@ async def nn_query(payload: Dict):
       - {"id": "<memory_or_image_id>", "type": "memory"|"image", "k": 5}
     Returns search results with id, score and meta.
     """
+
+@router.delete('/memory/{message_id}')
+async def delete_memory(message_id: str):
+    """Delete a memory/image row by id."""
+    ok = store.delete_memory(message_id)
+    return {"deleted": bool(ok)}
+
     k = int(payload.get('k', 5))
     if 'embedding' in payload and payload.get('embedding'):
         emb = payload.get('embedding')

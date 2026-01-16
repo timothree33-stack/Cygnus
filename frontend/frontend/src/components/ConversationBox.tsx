@@ -12,12 +12,13 @@ export default function ConversationBox({ agentId, personality }: { agentId: str
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/api/admin/agents/${encodeURIComponent(agentId)}/messages`);
+        // Use generic memories endpoint (compatible with current backend)
+        const res = await fetch(`${API_BASE}/api/admin/memories?agent_id=${encodeURIComponent(agentId)}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
-        // normalize messages
-        const msgs = (data.messages || []).map((m: any) => ({ id: m.id, from: (m.source||'').split(':')[1] || 'human', text: m.content }));
+        // normalize messages (filter by 'conversation' source prefix used by save-memory)
+        const msgs = (data.memories || []).filter((m: any) => (m.source||'').startsWith('conversation')).map((m: any) => ({ id: m.id, from: (m.source||'').split(':')[1] || 'human', text: m.content }));
         setMessages(msgs);
       } catch (e) {
         // ignore for now
@@ -36,8 +37,9 @@ export default function ConversationBox({ agentId, personality }: { agentId: str
     const payload = { role: 'human', text: input };
     setInput('');
     try {
-      const res = await fetch(`${API_BASE}/api/admin/agents/${encodeURIComponent(agentId)}/message`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      // Use generic save-memory endpoint which accepts {agent_id, content, embedding, source}
+      const res = await fetch(`${API_BASE}/api/admin/save-memory`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent_id: agentId, content: input, source: 'conversation:human' })
       });
       if (res.ok) {
         const data = await res.json();
@@ -57,7 +59,8 @@ export default function ConversationBox({ agentId, personality }: { agentId: str
   const removeMessage = async (id?: string) => {
     if (!id) return;
     try {
-      const res = await fetch(`${API_BASE}/api/admin/agents/${encodeURIComponent(agentId)}/messages/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      // New delete endpoint: DELETE /api/admin/memory/{id}
+      const res = await fetch(`${API_BASE}/api/admin/memory/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (res.ok) {
         setMessages((m) => m.filter((msg) => msg.id !== id));
       }

@@ -1,0 +1,10 @@
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+
+  VITE v4.5.14  ready i4:02:06 PM [vite] hmr update /src/component4:02:38 PM [vite] page reload dist/index.html
+2:38 PM [vite] page reload dist/index.html
+02:20 PM [vite] hmr update /src/components/ConversationBox.tsx
+4:02:24 PM [vite] hmr update /src/components/ConversationBox.tsx
+4:02:30 PM [vite] hmr update /src/components/ConversationBox.tsx
+4:02:36 PM [vite] hmr update /src/components/ConversationBox.tsx
+4:02:38 PM [vite] page reload dist/index.html
