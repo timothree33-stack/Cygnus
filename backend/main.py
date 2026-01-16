@@ -24,3 +24,15 @@ cygnus = _StubAgent('Cygnus')
 memory = None
 
 orchestrator = DebateOrchestrator(katz, dogz, cygnus, memory, snapshot_text, score_pair, _broadcast)
+
+# --- FastAPI app (so uvicorn backend.main:app works as expected) ---
+from fastapi import FastAPI
+from .api import admin_routes, debate_routes
+
+app = FastAPI(title='Cygnus Backend (dev)')
+app.include_router(admin_routes.router)
+app.include_router(debate_routes.router)
+
+@app.get('/api/status')
+async def status():
+    return {'ok': True}

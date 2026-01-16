@@ -18,9 +18,9 @@ def text_difference_score(a: str, b: str) -> float:
     return j
 
 
-def score_pair(a: str, b: str) -> Tuple[int, int]:
+def score_pair(a: str, b: str, *_) -> Tuple[int, int]:
     """Compute two unique scores 1-100 for statements a and b, higher means more different.
-    We measure difference of each from the other; normalize and map to 1-100, ensure uniqueness.
+    Accepts extra args (debate_id, round) for deterministic tie-breaking when provided.
     """
     da = text_difference_score(a, b)
     db = text_difference_score(b, a)
@@ -28,8 +28,9 @@ def score_pair(a: str, b: str) -> Tuple[int, int]:
     sa = int(max(1, min(100, round(1 + da * 99))))
     sb = int(max(1, min(100, round(1 + db * 99))))
     if sa == sb:
-        # deterministic perturbation: use hash of concatenation
-        h = int(hashlib.sha256((a + b).encode()).hexdigest(), 16)
+        # deterministic perturbation: use hash of concatenation + optional context
+        ctx = ''.join(map(str, _))
+        h = int(hashlib.sha256((a + b + ctx).encode()).hexdigest(), 16)
         if h % 2 == 0:
             sa = max(1, sa - 1)
         else:

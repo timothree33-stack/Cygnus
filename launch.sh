@@ -24,6 +24,15 @@ FRONTEND_PID_FILE="$LOG_DIR/frontend.pid"
 START_SERVERS_PID_FILE="$LOG_DIR/start_servers.pid"
 
 python_cmd() {
+    # Prefer project virtualenv Python if present, then fallback to system python
+    if [ -x "$PROJECT_DIR/.venv/bin/python" ]; then
+        echo "$PROJECT_DIR/.venv/bin/python"
+        return
+    fi
+    if [ -x "$PROJECT_DIR/venv/bin/python" ]; then
+        echo "$PROJECT_DIR/venv/bin/python"
+        return
+    fi
     command -v python3 >/dev/null 2>&1 && echo python3 || echo python
 }
 
@@ -33,7 +42,8 @@ start_backend() {
         return
     fi
     echo "Starting backend... (logs: $BACKEND_LOG)"
-    nohup $(python_cmd) -m backend.main > "$BACKEND_LOG" 2>&1 &
+    # Ensure the project root is on PYTHONPATH so `python -m backend.main` resolves local package
+    nohup env PYTHONPATH="$PROJECT_DIR" $(python_cmd) -m backend.main > "$BACKEND_LOG" 2>&1 &
     echo $! > "$BACKEND_PID_FILE"
     sleep 1
     echo "Backend started (pid $(cat $BACKEND_PID_FILE))."

@@ -24,5 +24,5 @@ test('debate: full 5-round flow (smoke)', async ({ page, request }) => {
   await page.click('text=Join');
   // Wait for round 5 to appear (or until timeout)
   await page.waitForSelector('text=Round 5', { timeout: 30000 });
-  await expect(page.getByText('Round 5')).toBeVisible();
+  await expect(page.getByText('Round 5', { exact: true })).toBeVisible();
 });
