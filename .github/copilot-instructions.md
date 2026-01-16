@@ -2,85 +2,96 @@
 
 # Copilot Instructions — Cygnus Pyramid (2026)
 
-## Purpose
-A short, actionable guide to help AI coding agents be productive in Cygnus Pyramid. Focus on repository-specific workflows, sensitive areas, and integration patterns so suggestions are precise and safe.
+Purpose: Short, actionable guidance so AI coding agents can be immediately productive in this repo.
 
----
-
-## Quickstart & Core Workflows (practical)
-- **Python & venv:** Prefer Python 3.12. Create a venv and install deps:
+Quickstart
+- Python: Prefer **Python 3.12**. Create a venv and install deps:
   - `python -m venv .venv && source .venv/bin/activate`
   - `pip install -r requirements.txt`
-- **Model infra (two options):**
-  - **Ollama:** `ollama pull <model>`; set `OLLAMA_BASE_URL` and `OLLAMA_MODEL` env vars.
-  - **llama.cpp (local GGUF):** `./start_servers.sh` — builds `llama.cpp` if missing and launches servers on **8081–8083**. Note: the script expects `models/Falcon-H1-1.5B-Deep-Instruct-Q5_K.gguf` by default (edit `start_servers.sh` if you use a different model).
-- One-step launch (starts LLMs, backend, frontend): `./launch.sh`
-- Backend only: `python -m backend.main` (default port 8001)
-- Agent panel (dev): `python -m agent_panel.app` or `uvicorn agent_panel.app:app --reload --host 0.0.0.0 --port 8001`
-- Frontend (vite): `cd frontend/frontend && npm install && npm run dev` (default port 5173). Note: this repo contains a nested canonical frontend at `frontend/frontend`; top-level frontend artifacts were archived to `frontend/_legacy/` to avoid conflicting copies.
-- **Docker:** `docker-compose up` uses `docker-compose.yaml` to run `cygnus` + `chromadb`. The compose file sets `OLLAMA_HOST` and maps volumes for `memory_stores` and `config`.
-- Check health endpoints:
-  - LLM servers: `http://localhost:8081/health`
-  - Backend: `http://localhost:8001/api/status`
-- Logs & PIDs: `./logs/*.log` and `./logs/*.pid` (created by start/launch scripts)
+- Launch infra:
+  - Local LLMs: `./start_servers.sh` (starts local `llama-server` instances on **8081–8083**)
+  - Full stack: `./launch.sh` (LLMs + backend + frontend)
+  - Backend only: `python -m backend.main` (default port **8001**)
+  - Agent UI: `python -m agent_panel.app` or `uvicorn agent_panel.app:app --reload --host 0.0.0.0 --port 8001`
+  - Frontend dev: `cd frontend/frontend && npm install && npm run dev` (Vite, default **5173**)
+- Health endpoints: LLM `http://localhost:8081/health`, Backend `http://localhost:8001/api/status`
+- Logs: `./logs/*.log` and `./logs/*.pid`
 
----
+Model backends & env
+- `MODEL_BACKEND_TYPE` selects model backend (`openai|ollama|vllm|llama.cpp|onnx|torch`).
+- Key env vars: `OPENAI_API_KEY`, `EMBEDDER_TYPE` ("stub"|"openai"), `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `LLAMA_CPP_MODEL_PATH`, `VLLM_MODEL_PATH`, `ONNX_MODEL_PATH`, `TORCH_MODEL_PATH`, `MAX_TOKENS`, `TEMPERATURE`.
+- Per-agent URLs and fallbacks live in `backend/config.py` and `agent_panel/app.py::initialize_model_backend()`.
 
-## Model backends & env vars
-- **Select backend:** `MODEL_BACKEND_TYPE` (options: `openai`, `ollama`, `vllm`, `llama.cpp`, `onnx`, `torch`). Defaults and required keys are implemented in `agent_panel/app.py::initialize_model_backend()`.
-- **Common env vars:** `OPENAI_API_KEY`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `LLAMA_CPP_MODEL_PATH`, `VLLM_MODEL_PATH`, `ONNX_MODEL_PATH`, `TORCH_MODEL_PATH`, `MAX_TOKENS`, `TEMPERATURE`.
-- **Per-agent model URLs (backend):** `backend/config.py` lists defaults for `katz`, `dogz`, `cygnus` (default: `http://localhost:8082`, `http://localhost:8083`, `http://localhost:8081`). Update there when using different host/ports.
-- When using Ollama or remote visual models, check health endpoints (visual model URL in `backend/config.py` or `agent_panel/app.py`).
+Architecture (concise)
+- `backend/`: orchestration (debates, ResearchScheduler, memory, MCP server). See `backend/main.py` for LLM client wiring.
+- `llama.cpp/`: local model server and low-level C/C++ tests (see `llama.cpp/AGENTS.md` for contributor rules).
+- `backend/`: orchestration (debates, ResearchScheduler, memory, MCP adapters). See `backend/main.py`, `backend/debate/orchestrator.py`, and `backend/api/*` for wiring and APIs.
+- Memory-first design: most outputs are persisted (FTS + embeddings). See `backend/memory/`, `memory_stores/` (episodic stores), `backend/db/sqlite_store.py` and `ARCHITECTURE.md` for intended Central Library components (Chroma/SQLite/JSON archives).
 
----
+Project-specific patterns
+- Agents: In this tree, agents are usually provided as model client objects with an async `respond(...)` coroutine (see `backend/main.py` `_StubAgent` and `backend/debate/orchestrator.py::_ask_agent`). Add new agents by providing objects following that pattern and wiring them into the orchestrator.
+- Deliberation: Debates are scheduled/run by `DebateOrchestrator` (events: `debate_started`, `round_started`, `statement`, `snapshot_taken`, `scores_assigned`, `allcall_round`, `debate_finished`). Use `/api/debate/start`, `/api/debate/{id}/allcall`, `/api/debate/{id}/camera-capture` for common operations.
+- Native control & cameras: Camera capture endpoints fall back to a harmless placeholder when OpenCV or hardware is unavailable—helpful for CI.
+- Caution areas: Files that operate on host OS or external services (camera capture, crawlers, any code that touches the filesystem or network) require additional tests and maintainer sign-off before deployment.
+- Note: Some higher-level components referenced in docs (e.g., `agent_panel/`) are not present in this workspace; treat those references as optional/legacy and prefer `frontend/` + `backend/api` for current UI/integration points.
 
-## Architecture (big picture)
-- `backend/`: core orchestration (debates, ResearchScheduler, MCP server). LLM clients and broadcast plumbing are created in `backend/main.py` and passed to agents/orchestrator.
-- `agent_panel/`: control UI, agents definitions, native control, vision, per-agent memory (SQLite `agent_panel_memory.db`). Avatars and emotion state managed here.
-- `llama.cpp/`: local model server; contains strict contributor rules (`llama.cpp/AGENTS.md`).
-- Memory: backend uses `MemorySystem("./memory_stores")`; agent panel uses `agent_panel_memory.db`. Embedding anchors are persisted at startup in `agent_panel.app.persist_agent_embedding_anchors()`.
+Scripts, tests & infra notes
+- Scripts: `./start_servers.sh`, `./launch.sh`, `./stop_servers.sh`.
+- Tests: Run `pytest` at repo root or per-component (`pytest backend/`, `pytest agent_panel/`). Frontend e2e tests use Playwright and may need browser installs or extra env vars—see `.github/workflows/e2e-playwright.yml` and `frontend/tests/e2e` for examples. Some tests rely on optional dependencies or API keys; inspect failing tests or the test file for requirements and mock/stub external services when possible.
+- `llama.cpp` contains its own test suite and contributor rules—**do not** author large AI-generated changes in that area (`llama.cpp/AGENTS.md`).
 
----
+Admin & migration
+- Admin endpoint protection: set `ADMIN_API_KEY` to require header `X-ADMIN-KEY` on admin endpoints (see `backend/api/admin_routes.py`).
+- Import memory: POST `/api/admin/import-memory` triggers migration from `./memory_stores` into the SQLite DB. The migration utility is expected at `./scripts/migrate_memory_to_db.py`—the endpoint will return a graceful error if the script is missing.
 
-## Project-specific patterns & examples
-- **Memory-first:** Persist every agent output (FTS + embeddings). Files: `backend/memory/`, `agent_panel/memory.py`.
-- **Add an agent:** Follow `agent_panel/agents.py` — create `AgentDefinition`, add `embedding_anchors`, and ensure startup code persists anchors and registers avatars (`agent_panel/app.py`).
-- **Native control is high-risk:** `agent_panel/native_control.py` exposes mouse/keyboard/screenshot/ocr. Carefully test and ask maintainers before changing. Actions can be executed via `/api/native/action`.
-- **Deliberation & approvals:** The deliberation pipeline can produce `awaiting_approval` states; UI (deliberation view) and endpoints expect operator decisions. Check `/api/core/*` routes.
-- **Crawler & sandbox:** Autonomous crawlers and sandboxes exist but are disabled by default; domain configs are in `agent_panel/app.py::DOMAIN_CONFIGS`.
+Development tips
+- Model backend: to run components with a specific model backend set `MODEL_BACKEND_TYPE` and the matching env vars (e.g., `MODEL_BACKEND_TYPE=openai OPENAI_API_KEY=... python -m backend.main`). For a local llama-based stack, start servers with `./start_servers.sh` before launching the full stack (`./launch.sh`).
 
----
+Safety & contributor rules (required)
+- For `llama.cpp/`, AI-generated PRs are prohibited—AI can assist but not author major changes; always disclose AI usage.
+- Any edits touching `agent_panel/native_control.py`, crawler/sandbox, or other host-operating code must include tests and explicit maintainer review.
+- Prefer small, focused PRs with clear descriptions and tests; do not merge on maintainer's behalf.
 
-## Scripts & developer commands to reference
-- `./start_servers.sh` — builds (if needed) and starts local `llama-server` instances (ports 8081/8082/8083). Requires `cmake` and system build tools; supports CUDA builds when available.
-- `./launch.sh` — convenient launcher (may start LLM servers, backend, frontend and open the browser).
-- `python -m backend.main` — start backend (port 8001 default). Use `PORT` env var to override.
-- `python -m agent_panel.app` or `uvicorn ...` — start agent panel.
-- `cd frontend && npm run dev` — start Vite frontend.
-- **Tests:** `pytest` at repo root or per-component (`pytest backend/` / `pytest agent_panel/`). Some tests require optional dependencies or external API keys (see `backend/tests/*` and `backend/tests/conftest.py`).
-- `llama.cpp` has separate C/C++ tests under `llama.cpp/tests/` — follow `llama.cpp/AGENTS.md` before making changes there.
+Practical examples
+- Persisting embeddings: `agent_panel/app.py::persist_agent_embedding_anchors()` calls `memory_store.upsert_embedding(...)`.
+- Start a debate: `POST /api/debate/start` (handler in `backend/main.py`).
+- Execute a native action: `POST /api/native/action` with payload `{ "type": "mouse_click", "x": 100, "y": 200 }`.
 
----
+Port conflicts & Ollama note ⚠️
+- Ollama snap may auto-bind **8081–8083**, which prevents `./start_servers.sh` from starting local servers. Diagnose with `ss`/`lsof` and stop/disable Ollama (`sudo snap stop ollama && sudo snap disable ollama`) if needed.
+- `start_servers.sh` includes a preflight check and supports `FORCE_KILL_PORTS=1` for emergency use—prefer stopping services manually first.
 
-## Safety & contributor policy (must follow)
-- `llama.cpp/AGENTS.md` is authoritative: **AI-generated PRs are forbidden in the `llama.cpp` area** — AI can assist but not author major changes; disclose AI usage when required.
-- Changes to: `agent_panel/native_control.py`, crawler/sandbox code, or anything that operates on the host require maintainer review and clear tests.
-- Playground is metadata-only. Admin actions are protected by `PLAYGROUND_ADMIN_KEY`.
+If anything is unclear
+- Ask focused, component-specific questions and include the file paths you plan to change (e.g., `agent_panel/native_control.py`, `backend/main.py`).
 
----
-
-```markdown
+(Kept concise and focused—ask if you want additional examples or deeper file pointers.)markdown
 # Copilot Instructions — Cygnus Pyramid (2026)
 
 Purpose: concise, repo-specific guidance for AI coding agents to be productive safely.
 
 Quickstart
-- Install deps: `pip install -r requirements.txt` (root). Optionally `pip install -r agent_panel/requirements.txt`.
+- Install deps: `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` (root). Optionally `pip install -r agent_panel/requirements.txt`.
 - Start full stack: `./launch.sh` (LLM servers + backend + frontend).
-- Start local LLM servers: `./start_servers.sh` (llama.cpp servers on 8081/8082/8083).
-- Run backend only: `python -m backend.main` (default port 8001).
-- Run agent panel dev: `python -m agent_panel.app` or `uvicorn agent_panel.app:app --reload --host 0.0.0.0 --port 8001`.
-- Frontend dev: `cd frontend && npm run dev` (Vite, default 5173).
+- Run backend only (dev): `uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001` or `python -m backend.main` (default port 8001).
+- Start local LLM servers (if using `llama.cpp`): `./start_servers.sh` (ports **8081–8083**) — beware Ollama may conflict.
+- Frontend dev: `cd frontend/frontend && npm install && npm run dev` (Vite, default **5173**).
+
+How to run a local dev loop (compact) 🔁
+1. Create venv & install deps:
+   - `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+2. Start local LLM (if using `llama.cpp` backend):
+   - `./start_servers.sh`
+3. Start backend with auto-reload (example using OpenAI):
+   - `MODEL_BACKEND_TYPE=openai OPENAI_API_KEY=... uvicorn backend.main:app --reload --port 8001`
+   - Or run with local llama: `MODEL_BACKEND_TYPE=llama.cpp uvicorn backend.main:app --reload --port 8001`
+4. Start frontend:
+   - `cd frontend/frontend && npm run dev`
+5. Quick test + reload cycle:
+   - Make code change → refresh frontend or send HTTP request to backend (e.g., `curl http://localhost:8001/api/status`) → observe logs.
+
+Notes
+- Use `npx playwright install` before running frontend e2e tests (`npm run test:e2e`). See `.github/workflows/e2e-playwright.yml` for CI details.
+- If ports 8081–8083 are in use (Ollama), stop/disable Ollama or choose a different model backend.
 
 Health & logs
 - LLM health: `http://localhost:8081/health`.
