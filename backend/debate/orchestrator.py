@@ -6,8 +6,8 @@ from typing import Callable, Optional, Dict, Any
 class DebateOrchestrator:
     def __init__(self, katz, dogz, cygnus, memory, snapshot_fn: Callable, score_fn: Callable, broadcast: Callable):
         """katz/dogz/cygnus: agents or LLM clients with a .respond(topic, context) coroutine
-        memory: MemorySystem instance
-        snapshot_fn: callable(agent_id, text, timestamp) -> snapshot_id
+        memory: MemorySystem or SQLiteStore instance
+        snapshot_fn: callable(agent_id, text, timestamp, debate_id=None) -> snapshot_id
         score_fn: callable(text_a, text_b) -> (score_a, score_b)  # unique scores 1-100
         broadcast: callable to send websocket events
         """
@@ -19,6 +19,24 @@ class DebateOrchestrator:
         self.score = score_fn
         self.broadcast = broadcast
         self._current_debates: Dict[str, Dict[str, Any]] = {}
+        # If a SQLiteStore-like object is passed in as memory, use it for persistence
+        self.store = None
+        try:
+            # duck-type: has create_debate method
+            if memory and hasattr(memory, 'create_debate'):
+                self.store = memory
+        except Exception:
+            self.store = None
+
+    async def _ensure_store(self):
+        if self.store:
+            return self.store
+        try:
+            from ..db.sqlite_store import SQLiteStore
+            self.store = SQLiteStore()
+            return self.store
+        except Exception:
+            return None
 
     async def run_debate(self, debate_id: str, topic: str, rounds: int = 5, pause_sec: int = 60):
         """Run a debate with given number of rounds and pause between statements.
@@ -46,6 +64,12 @@ class DebateOrchestrator:
             state['round'] = r
             await self._broadcast({'type': 'round_started', 'debate_id': debate_id, 'round': r})
 
+            # Ensure we have a store to persist debate/round data
+            store = await self._ensure_store()
+            round_id = None
+            if store:
+                round_id = store.create_round(debate_id, r)
+
             # Before each round, check for allcall request
             if state.get('mode') == 'allcall':
                 await self._run_allcall_round(debate_id, topic, r)
@@ -53,13 +77,13 @@ class DebateOrchestrator:
                 state['mode'] = 'normal'
 
             # KatZ speaks (Pro)
-            katz_text = await self._ask_agent(self.katz, topic, debate_id, r, 'katz')
+            katz_text, katz_arg_id = await self._ask_agent(self.katz, topic, debate_id, r, 'katz', round_id)
             # Snapshot & timestamp
             katz_snapshot = self._maybe_snapshot('katz', katz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
             # DogZ speaks (Antithesis)
-            dogz_text = await self._ask_agent(self.dogz, topic, debate_id, r, 'dogz')
+            dogz_text, dogz_arg_id = await self._ask_agent(self.dogz, topic, debate_id, r, 'dogz', round_id)
             dogz_snapshot = self._maybe_snapshot('dogz', dogz_text, debate_id, r)
             await asyncio.sleep(pause_sec)
 
@@ -67,6 +91,17 @@ class DebateOrchestrator:
             score_k, score_d = self.score(katz_text, dogz_text, debate_id, r)
             state['history'].append({'round': r, 'katz': katz_text, 'dogz': dogz_text, 'scores': {'katz': score_k, 'dogz': score_d}})
             await self._broadcast({'type': 'scores_assigned', 'debate_id': debate_id, 'round': r, 'scores': {'katz': score_k, 'dogz': score_d}})
+
+            # Persist scores and update tallies
+            try:
+                if store and katz_arg_id and dogz_arg_id:
+                    # insert across arguments (create argument_scores and update debate_tallies)
+                    sid_k = store.add_score(katz_arg_id, score_k, confidence=1.0)
+                    sid_d = store.add_score(dogz_arg_id, score_d, confidence=1.0)
+                    store.add_or_update_tally(debate_id, store.ensure_agent('katz'), score_k)
+                    store.add_or_update_tally(debate_id, store.ensure_agent('dogz'), score_d)
+            except Exception:
+                pass
 
         # Final synthesis by Hiemdall (cygnus)
         final_synthesis = await self._ask_agent(self.cygnus, topic, debate_id, 'final', 'cygnus')
@@ -100,8 +135,10 @@ class DebateOrchestrator:
             return True
         return False
 
-    async def _ask_agent(self, agent, topic, debate_id, round_num, agent_name):
-        """Ask an agent to respond. Agents may be objects with `respond` coroutine or simple callables."""
+    async def _ask_agent(self, agent, topic, debate_id, round_num, agent_name, round_id=None):
+        """Ask an agent to respond. Agents may be objects with `respond` coroutine or simple callables.
+        Returns tuple (text, argument_id_or_None) where argument_id is persisted when a store is available.
+        """
         start = time.time()
         try:
             if hasattr(agent, 'respond'):
@@ -113,7 +150,18 @@ class DebateOrchestrator:
             text = f"(agent error: {e})"
         timestamp = time.time()
         await self._broadcast({'type': 'statement', 'debate_id': debate_id, 'agent': agent_name, 'text': text, 'ts': timestamp})
-        return text
+
+        # Persist argument to store when available
+        arg_id = None
+        try:
+            store = await self._ensure_store()
+            if store:
+                agent_uuid = store.ensure_agent(agent_name)
+                arg_id = store.add_argument(round_id, agent_uuid, text) if round_id else None
+        except Exception:
+            arg_id = None
+
+        return text, arg_id
 
     def _maybe_snapshot(self, agent_id: str, text: str, debate_id: str = None, round_num: int = None):
         try:

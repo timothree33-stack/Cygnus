@@ -21,13 +21,17 @@ async def _broadcast(msg: dict):
 katz = _StubAgent('Katz')
 dogz = _StubAgent('Dogz')
 cygnus = _StubAgent('Cygnus')
-memory = None
+# prefer a SQLiteStore-backed orchestrator for persistence in dev
+from .db.sqlite_store import SQLiteStore
+store = SQLiteStore()
+memory = store
 
 # We'll attach a WebSocketManager to the app state and pass its broadcast fn to orchestrator
 from .ws_manager import WebSocketManager
 ws_manager = WebSocketManager()
 
-orchestrator = DebateOrchestrator(katz, dogz, cygnus, memory, snapshot_text, score_pair, ws_manager.broadcast)
+# Use the store as the 'memory' arg so DebateOrchestrator can persist debates/rounds
+orchestrator = DebateOrchestrator(katz, dogz, cygnus, store, snapshot_text, score_pair, ws_manager.broadcast)
 
 # --- FastAPI app (so uvicorn backend.main:app works as expected) ---
 from fastapi import FastAPI

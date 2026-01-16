@@ -15,7 +15,15 @@ DEBATES = {}
 async def start_debate(background_tasks: BackgroundTasks, topic: Optional[str] = None, rounds: int = 5, pause_sec: Optional[int] = None):
     if not topic:
         topic = "(random topic)"
-    debate_id = str(uuid.uuid4())
+    # Persist debate to DB and use its id
+    try:
+        from ..db.sqlite_store import SQLiteStore
+        store = SQLiteStore()
+        did = store.create_debate(topic, helix_active=False, debate_number=0)
+    except Exception:
+        # fallback: in-memory id
+        did = str(uuid.uuid4())
+
     # Try to pull pause from env if not provided
     pause = int(os.environ.get('DEBATE_PAUSE_SEC', '60')) if pause_sec is None else pause_sec
 
@@ -26,9 +34,9 @@ async def start_debate(background_tasks: BackgroundTasks, topic: Optional[str] =
         raise HTTPException(status_code=500, detail='orchestrator_unavailable')
 
     # run in background
-    background_tasks.add_task(orchestrator.run_debate, debate_id, topic, rounds, pause)
-    DEBATES[debate_id] = {'topic': topic, 'rounds': rounds, 'pause_sec': pause, 'state': 'started'}
-    return {'debate_id': debate_id, 'status': 'started', 'topic': topic}
+    background_tasks.add_task(orchestrator.run_debate, did, topic, rounds, pause)
+    DEBATES[did] = {'topic': topic, 'rounds': rounds, 'pause_sec': pause, 'state': 'started'}
+    return {'debate_id': did, 'status': 'started', 'topic': topic}
 
 @router.get('/{debate_id}/state')
 async def get_state(debate_id: str):
