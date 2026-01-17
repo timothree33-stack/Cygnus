@@ -97,6 +97,8 @@ export default function Debate() {
             const msg = JSON.parse(ev.data);
             if (msg.type === 'handshake_ack') {
               wsReady = true;
+              // expose a global flag for e2e tests to assert readiness
+              try{ (window as any).CYGNUS_WS_READY = true; } catch(e){}
               setState((s:any)=> ({...(s||{}), ws_ready: true}));
               return;
             }

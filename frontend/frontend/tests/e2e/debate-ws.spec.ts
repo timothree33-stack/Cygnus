@@ -35,6 +35,9 @@ test('debate: handles real websocket messages', async ({ page }) => {
   await page.fill('input[placeholder="Or paste debate id to join"]', 'ws-test');
   await page.click('text=Join');
 
+  // Wait for handshake readiness flag on window
+  await page.waitForFunction(() => (window as any).CYGNUS_WS_READY === true, null, { timeout: 2000 });
+
   // Wait for messages to arrive and UI to update (either a statement or final synthesis should appear)
   await expect(page.locator('text=✨ Alice')).toBeVisible({ timeout: 5000 });
   await Promise.race([

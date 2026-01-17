@@ -75,10 +75,11 @@ PY
             sleep 1
           done
 
-      - name: Run rotation smoke test (chromium only)
+      - name: Run rotation smoke tests (chromium only)
         env:
           CI: '1'
           PLAYWRIGHT_SKIP_WEBKIT: '1'
         run: |
           cd "$FRONTEND_DIR"
-          npx playwright test frontend/tests/e2e/debate-rotation.spec.ts --project=chromium --reporter=github --timeout 60000
+          # Run the rotation + websocket smoke tests only (chromium)
+          npx playwright test frontend/tests/e2e/debate-rotation.spec.ts frontend/tests/e2e/debate-ws.spec.ts --project=chromium --reporter=github --timeout 60000

@@ -19,10 +19,22 @@ async def debate_ws(websocket: WebSocket, debate_id: str):
     await manager.register(debate_id, websocket)
     try:
         while True:
-            # Keep connection open; we don't expect to receive messages in this simple setup
             data = await websocket.receive_text()
-            # If a client sends a ping payload, we could respond; ignore for now
-            await websocket.send_text('')
+            # Try to parse JSON messages and honor handshake protocol
+            try:
+                import json
+                msg = json.loads(data)
+                if isinstance(msg, dict) and msg.get('type') == 'handshake':
+                    # Acknowledge handshake so clients know server is ready
+                    await websocket.send_json({'type': 'handshake_ack', 'debate_id': debate_id})
+                    continue
+            except Exception:
+                pass
+            # default: echo an empty string to keep connection alive
+            try:
+                await websocket.send_text('')
+            except Exception:
+                pass
     except WebSocketDisconnect:
         await manager.unregister(debate_id, websocket)
     except Exception:
