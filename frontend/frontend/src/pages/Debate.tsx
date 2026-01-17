@@ -22,7 +22,10 @@ export default function Debate() {
     if (debateId) {
       const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const host = window.location.hostname;
-      const url = `${scheme}://${host}:8001/ws/debates/${debateId}`;
+      // Allow tests to override WS base with window.CYGNUS_WS_BASE
+      const wsBase = (window as any)?.CYGNUS_WS_BASE || `${scheme}://${host}:8001`;
+      const baseTrim = wsBase.replace(/\/$/, '');
+      const url = `${baseTrim}/ws/debates/${debateId}`;
       try {
         ws = new WebSocket(url);
         ws.onmessage = async (ev) => {
@@ -294,7 +297,6 @@ export default function Debate() {
                   {/* Use new component when available */}
                   <div style={{marginTop:8}}>
                     <Scoreboard history={history} onOpenMember={(entry:any)=>setMemberPanelRound(entry)} activeMembers={state?.active_members || {}} />
-                  </div>
                   </div>
                 </div>
               )

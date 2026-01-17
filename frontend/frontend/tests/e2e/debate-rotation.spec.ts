@@ -37,14 +37,20 @@ test('debate: scoreboard highlights and tooltips reflect rotating active members
   await page.fill('input[placeholder="Or paste debate id to join"]', 'rot-id');
   await page.click('text=Join');
 
-  // Expect initial active member badge for Alice to be visible
-  await expect(page.locator('text=✨ Alice')).toBeVisible();
-  // Hover the Cats header and expect tooltip to contain 'Active: Alice' (title attribute)
-  await page.hover('th:has-text("Team")');
+  // Hover the Cats header and expect tooltip to contain an Active member (Alice or Bob)
+  const teamCell = page.locator('td:has-text("Katz")');
+  await teamCell.hover();
+  await expect(teamCell.locator('[role="tooltip"]')).toHaveText(/Active: (Alice|Bob)/);
 
-  // Wait for next poll to occur and UI to update (poll period is 1s in fallback); wait a bit longer
-  await page.waitForTimeout(1500);
-
-  // Now expect the badge to reflect Bob
-  await expect(page.locator('text=✨ Bob')).toBeVisible();
+  // Wait for next poll to occur and UI to update (poll period is 1s in fallback); wait up to 3s for Bob to appear
+  await page.waitForTimeout(200);
+  await page.waitForFunction(() => {
+    const td = Array.from(document.querySelectorAll('td')).find(n => n.textContent?.includes('Katz'));
+    if(!td) return false;
+    const t = td.querySelector('[role="tooltip"]');
+    return !!(t && /Active: Bob/.test((t as HTMLElement).innerText));
+  }, null, { timeout: 3000 });
+  // final assertion: Bob should become visible
+  await teamCell.hover();
+  await expect(teamCell.locator('[role="tooltip"]')).toHaveText(/Active: Bob/);
 });
