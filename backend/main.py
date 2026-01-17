@@ -23,8 +23,14 @@ dogz = _StubAgent('Dogz')
 cygnus = _StubAgent('Cygnus')
 # prefer a SQLiteStore-backed orchestrator for persistence in dev
 from .db.sqlite_store import SQLiteStore
-store = SQLiteStore()
-memory = store
+# Attempt to create a default store for local dev; if the environment (CI, restricted runner)
+# cannot create the DB path, fall back to None so import-time failures are avoided.
+try:
+    store = SQLiteStore()
+    memory = store
+except Exception:
+    store = None
+    memory = None
 
 # We'll attach a WebSocketManager to the app state and pass its broadcast fn to orchestrator
 from .ws_manager import WebSocketManager
