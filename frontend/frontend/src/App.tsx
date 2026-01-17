@@ -5,6 +5,9 @@ import Agents from './pages/Agents';
 import Crawler from './pages/Crawler';
 import Debate from './pages/Debate';
 import Chat from './pages/Chat';
+import ConversationPage from './pages/ConversationPage';
+import VideoPage from './pages/VideoPage';
+import PersonaPage from './pages/PersonaPage';
 
 export default function App() {
   return (
@@ -15,7 +18,10 @@ export default function App() {
         <Link to="/agents">Agents</Link> |
         <Link to="/crawler">Crawler</Link> |
         <Link to="/debate">Debate</Link> |
-        <Link to="/chat">Chat</Link>
+        <Link to="/chat">Chat</Link> |
+        <Link to="/conversation">Conversation</Link> |
+        <Link to="/video">Video</Link> |
+        <Link to="/persona">Persona</Link>
       </nav>
       <main>
         <Routes>
@@ -25,6 +31,9 @@ export default function App() {
           <Route path="/crawler" element={<Crawler />} />
           <Route path="/debate" element={<Debate />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/conversation" element={<ConversationPage />} />
+          <Route path="/video" element={<VideoPage />} />
+          <Route path="/persona" element={<PersonaPage />} />
         </Routes>
       </main>
     </div>
