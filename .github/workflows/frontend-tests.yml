@@ -17,7 +17,12 @@ jobs:
           cache: 'npm'
       - name: Install frontend deps
         working-directory: frontend/frontend
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
       - name: Run Vitest
         working-directory: frontend/frontend
         run: npm test --silent
@@ -35,7 +40,11 @@ jobs:
       - name: Install deps + Playwright browsers
         working-directory: frontend/frontend
         run: |
-          npm ci
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
           npm run test:e2e:install --silent
       - name: Build & preview
         working-directory: frontend/frontend
