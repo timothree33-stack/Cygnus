@@ -28,16 +28,25 @@ except Exception:
 
 # Use the same default DB path as the store; allow override via env
 DB_PATH = os.environ.get('CYGNUS_PANEL_DB', os.path.expanduser('~/Desktop/agent_panel.db'))
-store = SQLiteStore(DB_PATH)
 
-# Ensure a vector_store exists even if the main app lifespan hasn't run (helps tests that import admin_routes directly)
-try:
-    from ..embeddings.vector_store import VectorStore
-    if not hasattr(store, 'vector_store') or getattr(store, 'vector_store') is None:
-        store.vector_store = VectorStore()
-except Exception:
-    # If embeddings module is not available, leave vector_store uninitialized and let endpoints handle it
-    pass
+# Lazy store accessor to respect runtime env changes (helps tests)
+_store = None
+_last_db_path = None
+
+def get_store():
+    """Return a SQLiteStore instance for the current DB path; re-create if CYGNUS_PANEL_DB changed."""
+    global _store, _last_db_path
+    db_path = os.environ.get('CYGNUS_PANEL_DB', os.path.expanduser('~/Desktop/agent_panel.db'))
+    if _store is None or _last_db_path != db_path:
+        _store = SQLiteStore(db_path)
+        _last_db_path = db_path
+        try:
+            from ..embeddings.vector_store import VectorStore
+            if not hasattr(_store, 'vector_store') or getattr(_store, 'vector_store') is None:
+                _store.vector_store = VectorStore()
+        except Exception:
+            pass
+    return _store
 
 @router.post('/import-memory')
 async def import_memory_from_stores() -> Dict:
@@ -53,12 +62,13 @@ async def import_memory_from_stores() -> Dict:
             print(f"⚠️ Migration import failed: {e}")
             return {"migrated": 0, "error": "migration_module_not_found"}
 
-    migrated = migrate_memory_stores_to_db(store)
+    migrated = migrate_memory_stores_to_db(get_store())
     return {"migrated": migrated}
 
 @router.get('/debates')
 async def list_debates(limit: int = 20):
-    return {"debates": store.get_debates(limit=limit)}
+    s = get_store()
+    return {"debates": s.get_debates(limit=limit)}
 
 from ..embeddings import get_embedder, get_visual_embedder
 
@@ -82,7 +92,8 @@ async def save_memory(payload: Dict):
             print(f"⚠️ Failed to generate embedding in save-memory: {e}")
             embedding = None
 
-    mid = store.save_memory(payload.get('agent_id'), content, embedding, payload.get('source'))
+    s = get_store()
+    mid = s.save_memory(payload.get('agent_id'), content, embedding, payload.get('source'))
     return {"saved": mid}
 
 @router.post('/save-image-embedding')
@@ -99,13 +110,15 @@ async def save_image_embedding(payload: Dict):
             print(f"⚠️ Failed to generate embedding for image caption: {e}")
             embedding = None
 
-    iid = store.save_image_embedding(payload.get('debate_id'), payload.get('round_id'), payload.get('agent_id'), embedding or [], caption)
+    s = get_store()
+    iid = s.save_image_embedding(payload.get('debate_id'), payload.get('round_id'), payload.get('agent_id'), embedding or [], caption)
     return {"saved": iid}
 
 @router.get('/tallies')
 async def list_tallies(debate_id: str = None):
     """Return current tallies (optionally filtered by debate_id)."""
-    return {"tallies": store.get_tallies(debate_id)}
+    s = get_store()
+    return {"tallies": s.get_tallies(debate_id)}
 
 @router.post('/judge')
 async def judge_argument(payload: Dict):
@@ -116,20 +129,21 @@ async def judge_argument(payload: Dict):
     score = int(payload.get('score', 0))
     confidence = float(payload.get('confidence', 1.0))
 
+    s = get_store()
     # Insert score
-    sid = store.add_score(argument_id, score, confidence)
+    sid = s.add_score(argument_id, score, confidence)
 
     # Resolve argument -> round -> debate and agent
-    cur = store._exec("SELECT round_id, agent_id FROM arguments WHERE id = ?", (argument_id,))
+    cur = s._exec("SELECT round_id, agent_id FROM arguments WHERE id = ?", (argument_id,))
     row = cur.fetchone()
     if row:
         round_id = row['round_id']
         agent_id = row['agent_id']
-        rc = store._exec("SELECT debate_id FROM debate_rounds WHERE id = ?", (round_id,))
+        rc = s._exec("SELECT debate_id FROM debate_rounds WHERE id = ?", (round_id,))
         rrow = rc.fetchone()
         debate_id = rrow['debate_id'] if rrow else None
         # Update tally
-        store.add_or_update_tally(debate_id, agent_id, score)
+        s.add_or_update_tally(debate_id, agent_id, score)
     else:
         raise HTTPException(status_code=404, detail='argument not found')
 
@@ -139,7 +153,8 @@ async def judge_argument(payload: Dict):
 @router.get('/memories')
 async def list_memories(agent_id: str = None):
     """List memories, optionally filtered by agent_id."""
-    return {"memories": store.get_memories(agent_id)}
+    s = get_store()
+    return {"memories": s.get_memories(agent_id)}
 
 # --- Conversation endpoints ---
 @router.post('/agents/{agent_id}/message')
@@ -150,24 +165,27 @@ async def post_agent_message(agent_id: str, payload: Dict):
     if not text:
         raise HTTPException(status_code=400, detail='text required')
     # Save as memory with source 'conversation' and include role in meta by prefixing
-    mid = store.save_memory(agent_id, text, embedding=None, source=f'conversation:{role}')
+    s = get_store()
+    mid = s.save_memory(agent_id, text, embedding=None, source=f'conversation:{role}')
     return {"saved": mid}
 
 @router.get('/agents/{agent_id}/messages')
 async def get_agent_messages(agent_id: str):
     """Get conversation messages for an agent (filtered by source starting with 'conversation')."""
-    all_mem = store.get_memories(agent_id)
+    s = get_store()
+    all_mem = s.get_memories(agent_id)
     conv = [m for m in all_mem if m.get('source', '').startswith('conversation')]
     return {"messages": conv}
 
 @router.delete('/agents/{agent_id}/messages/{message_id}')
 async def delete_agent_message(agent_id: str, message_id: str):
     """Delete a conversation memory by id. Returns {deleted: true/false}."""
+    s = get_store()
     # Verify it belongs to the agent
-    mems = store.get_memories(agent_id)
+    mems = s.get_memories(agent_id)
     if not any(m['id'] == message_id for m in mems):
         raise HTTPException(status_code=404, detail='message not found')
-    ok = store.delete_memory(message_id)
+    ok = s.delete_memory(message_id)
     return {"deleted": bool(ok)}
 
 # --- Persona helpers ---
@@ -177,20 +195,23 @@ async def add_agent_persona(agent_id: str, payload: Dict):
     text = (payload.get('text') or '').strip()
     if not text:
         raise HTTPException(status_code=400, detail='text required')
-    mid = store.save_memory(agent_id, text, embedding=None, source='persona')
+    s = get_store()
+    mid = s.save_memory(agent_id, text, embedding=None, source='persona')
     return {"saved": mid}
 
 @router.get('/agents/{agent_id}/persona')
 async def list_agent_persona(agent_id: str, limit: int = 50):
     """List persona entries for an agent, newest first."""
-    all_mem = store.get_memories(agent_id)
+    s = get_store()
+    all_mem = s.get_memories(agent_id)
     persona = [m for m in all_mem if m.get('source') == 'persona'][:limit]
     return {"persona": persona}
 
 @router.delete('/memory/{memory_id}')
 async def delete_memory(memory_id: str):
     """Delete a memory by id (global). Returns {deleted: true/false}."""
-    ok = store.delete_memory(memory_id)
+    s = get_store()
+    ok = s.delete_memory(memory_id)
     if not ok:
         raise HTTPException(status_code=404, detail='memory not found')
     return {"deleted": True}
@@ -198,7 +219,8 @@ async def delete_memory(memory_id: str):
 @router.get('/image-embeddings')
 async def list_image_embeddings(debate_id: str = None):
     """List saved image embeddings, optionally filtered by debate_id."""
-    return {"images": store.get_image_embeddings(debate_id)}
+    s = get_store()
+    return {"images": s.get_image_embeddings(debate_id)}
 
 
 @router.put('/agent/{agent_name}/personality')
@@ -226,10 +248,11 @@ async def retrieve(q: str, k: int = 5, type: str = 'all', summaries: bool = Fals
       - max_chars: max chars for summary
     """
     # Use vector store on the configured DB store
-    if not hasattr(store, 'vector_store'):
+    s = get_store()
+    if not hasattr(s, 'vector_store') or s.vector_store is None:
         return {"results": [], "error": "vector_store_not_initialized"}
     try:
-        results = store.vector_store.search_text(q, k=k)
+        results = s.vector_store.search_text(q, k=k)
         # attach ids and content nicely, apply type filter and optional summaries
         from ..embeddings.summarizer import summarize_text
         out = []
@@ -383,7 +406,8 @@ async def save_image_bytes(payload: Dict):
         print(f"⚠️ Failed to compute visual embedding: {e}")
         emb = None
 
-    iid = store.save_image_embedding(payload.get('debate_id'), payload.get('round_id'), payload.get('agent_id'), emb or [], payload.get('caption'))
+    s = get_store()
+    iid = s.save_image_embedding(payload.get('debate_id'), payload.get('round_id'), payload.get('agent_id'), emb or [], payload.get('caption'))
     return {"saved": iid}
 
 @router.post('/nn')
@@ -398,7 +422,8 @@ async def nn_query(payload: Dict):
 @router.get('/memory/{message_id}')
 async def get_memory(message_id: str):
     """Retrieve a memory/image row by id."""
-    cur = store._exec("SELECT id,agent_id,content,embedding,source,created_at FROM memories WHERE id = ?", (message_id,))
+    s = get_store()
+    cur = s._exec("SELECT id,agent_id,content,embedding,source,created_at FROM memories WHERE id = ?", (message_id,))
     row = cur.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail='memory not found')
