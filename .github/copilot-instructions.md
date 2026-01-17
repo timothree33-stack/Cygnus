@@ -1,70 +1,83 @@
 
 
-# Copilot Instructions — Cygnus Pyramid (2026)
+# Copilot Instructions — Cygnus Pyramid (concise)
 
-Purpose: Short, actionable guidance so AI coding agents can be immediately productive in this repo.
+Purpose: immediate, repo-specific guidance to make small, safe, high-impact changes.
 
-Quickstart
-- Python: Prefer **Python 3.12**. Create a venv and install deps:
-  - `python -m venv .venv && source .venv/bin/activate`
-  - `pip install -r requirements.txt`
-- Launch infra:
-  - Local LLMs: `./start_servers.sh` (starts local `llama-server` instances on **8081–8083**)
-  - Full stack: `./launch.sh` (LLMs + backend + frontend)
-  - Backend only: `python -m backend.main` (default port **8001**)
-  - Agent UI: `python -m agent_panel.app` or `uvicorn agent_panel.app:app --reload --host 0.0.0.0 --port 8001`
-  - Frontend dev: `cd frontend/frontend && npm install && npm run dev` (Vite, default **5173**)
-- Health endpoints: LLM `http://localhost:8081/health`, Backend `http://localhost:8001/api/status`
-- Logs: `./logs/*.log` and `./logs/*.pid`
+Quickstart — dev loop ✅
+- Python: prefer `3.12`. Create venv + deps:
+  - `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+- Full stack (dev): `./launch.sh start` (use `START_LLAMAS=1` to also run local LLMs).
+- Backend only: `MODEL_BACKEND_TYPE=openai OPENAI_API_KEY=... uvicorn backend.main:app --reload --port 8001`
+- Local LLMs: `./start_servers.sh` → servers bind to ports **8081–8083**.
+- Frontend dev: `cd frontend/frontend && npm install && npm run dev` (Vite — 5173).
 
-Model backends & env
-- `MODEL_BACKEND_TYPE` selects model backend (`openai|ollama|vllm|llama.cpp|onnx|torch`).
-- Key env vars: `OPENAI_API_KEY`, `EMBEDDER_TYPE` ("stub"|"openai"), `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `LLAMA_CPP_MODEL_PATH`, `VLLM_MODEL_PATH`, `ONNX_MODEL_PATH`, `TORCH_MODEL_PATH`, `MAX_TOKENS`, `TEMPERATURE`.
-- Per-agent URLs and fallbacks live in `backend/config.py` and `agent_panel/app.py::initialize_model_backend()`.
+Key files & patterns (read these first) 🔎
+- `backend/main.py` — app entrypoint, `_StubAgent` examples, orchestration wiring.
+- `backend/debate/orchestrator.py` — debate flow; add agents here or follow its event hooks.
+- `backend/memory/`, `memory_stores/`, `backend/db/sqlite_store.py` — memory-first persistence (FTS + embeddings).
+- `backend/api/*` — REST surface; see `backend/api/admin_routes.py` for admin-only endpoints.
+- `llama.cpp/AGENTS.md` — contributor rules (protected area).
 
-Architecture (concise)
-- `backend/`: orchestration (debates, ResearchScheduler, memory, MCP server). See `backend/main.py` for LLM client wiring.
-- `llama.cpp/`: local model server and low-level C/C++ tests (see `llama.cpp/AGENTS.md` for contributor rules).
-- `backend/`: orchestration (debates, ResearchScheduler, memory, MCP adapters). See `backend/main.py`, `backend/debate/orchestrator.py`, and `backend/api/*` for wiring and APIs.
-- Memory-first design: most outputs are persisted (FTS + embeddings). See `backend/memory/`, `memory_stores/` (episodic stores), `backend/db/sqlite_store.py` and `ARCHITECTURE.md` for intended Central Library components (Chroma/SQLite/JSON archives).
+How to add an agent (checklist) ✳️
+1. Minimal interface (required)
+   - Implement a model-client **class** with an async `respond(**kwargs)` coroutine that returns a `str` or serializable `dict`.
+   - Keep the method signature compatible with `_StubAgent.respond(topic: str, round: int, **kwargs)` in `backend/main.py`.
 
-Project-specific patterns
-- Agents: In this tree, agents are usually provided as model client objects with an async `respond(...)` coroutine (see `backend/main.py` `_StubAgent` and `backend/debate/orchestrator.py::_ask_agent`). Add new agents by providing objects following that pattern and wiring them into the orchestrator.
-- Deliberation: Debates are scheduled/run by `DebateOrchestrator` (events: `debate_started`, `round_started`, `statement`, `snapshot_taken`, `scores_assigned`, `allcall_round`, `debate_finished`). Use `/api/debate/start`, `/api/debate/{id}/allcall`, `/api/debate/{id}/camera-capture` for common operations.
-- Native control & cameras: Camera capture endpoints fall back to a harmless placeholder when OpenCV or hardware is unavailable—helpful for CI.
-- Caution areas: Files that operate on host OS or external services (camera capture, crawlers, any code that touches the filesystem or network) require additional tests and maintainer sign-off before deployment.
-- Note: Some higher-level components referenced in docs (e.g., `agent_panel/`) are not present in this workspace; treat those references as optional/legacy and prefer `frontend/` + `backend/api` for current UI/integration points.
+2. Behavior & persistence (recommended)
+   - Return a concise `text` field; include optional metadata (`score`, `sources`) when available.
+   - If the agent produces anchors, call `memory_store.upsert_embedding(agent_id, key, text, vector=None)` immediately after generation.
 
-Scripts, tests & infra notes
-- Scripts: `./start_servers.sh`, `./launch.sh`, `./stop_servers.sh`.
-- Tests: Run `pytest` at repo root or per-component (`pytest backend/`, `pytest agent_panel/`). Frontend e2e tests use Playwright and may need browser installs or extra env vars—see `.github/workflows/e2e-playwright.yml` and `frontend/tests/e2e` for examples. Some tests rely on optional dependencies or API keys; inspect failing tests or the test file for requirements and mock/stub external services when possible.
-- `llama.cpp` contains its own test suite and contributor rules—**do not** author large AI-generated changes in that area (`llama.cpp/AGENTS.md`).
+3. Tests (must-have)
+   - Unit-test `respond()` for deterministic inputs (use `pytest.mark.asyncio`).
+   - Add an integration-style smoke test that passes the agent into `DebateOrchestrator` or the `_ask_agent` helper if present.
 
-Admin & migration
-- Admin endpoint protection: set `ADMIN_API_KEY` to require header `X-ADMIN-KEY` on admin endpoints (see `backend/api/admin_routes.py`).
-- Import memory: POST `/api/admin/import-memory` triggers migration from `./memory_stores` into the SQLite DB. The migration utility is expected at `./scripts/migrate_memory_to_db.py`—the endpoint will return a graceful error if the script is missing.
+4. Wiring & deployment
+   - Register the agent as a drop-in by passing an instance to `DebateOrchestrator(...)` (see `backend/main.py`).
+   - Expose any operator controls via `backend/api/*` only when the agent is stable; prefer feature flags for experimental agents.
 
-Development tips
-- Model backend: to run components with a specific model backend set `MODEL_BACKEND_TYPE` and the matching env vars (e.g., `MODEL_BACKEND_TYPE=openai OPENAI_API_KEY=... python -m backend.main`). For a local llama-based stack, start servers with `./start_servers.sh` before launching the full stack (`./launch.sh`).
+5. Safety & review
+   - If the agent performs OS/network actions or persists external data, add explicit tests and request maintainer review (see high-risk areas).
+   - Do NOT add AI-authored changes to `llama.cpp/` — follow `llama.cpp/AGENTS.md`.
 
-Safety & contributor rules (required)
-- For `llama.cpp/`, AI-generated PRs are prohibited—AI can assist but not author major changes; always disclose AI usage.
-- Any edits touching `agent_panel/native_control.py`, crawler/sandbox, or other host-operating code must include tests and explicit maintainer review.
-- Prefer small, focused PRs with clear descriptions and tests; do not merge on maintainer's behalf.
+Quick scaffold (copy-paste) 🔧
+- File: `backend/agents/sample_agent.py`
+  - Implements `class SampleAgent` with `async def respond(self, **kwargs)` and a short unit test in `backend/tests/test_sample_agent.py`.
 
-Practical examples
-- Persisting embeddings: `agent_panel/app.py::persist_agent_embedding_anchors()` calls `memory_store.upsert_embedding(...)`.
-- Start a debate: `POST /api/debate/start` (handler in `backend/main.py`).
-- Execute a native action: `POST /api/native/action` with payload `{ "type": "mouse_click", "x": 100, "y": 200 }`.
+Environment & backends — concrete tips ⚙️
+- Switch backends: set `MODEL_BACKEND_TYPE` (options: `openai|ollama|vllm|llama.cpp|onnx|torch`).
+- Local llama gotchas: Ollama snap often occupies 8081–8083 — run `ss -ltnp|grep :8081` before starting.
+- Admin routes require `ADMIN_API_KEY` (header `X-ADMIN-KEY`) — see `backend/api/admin_routes.py`.
 
-Port conflicts & Ollama note ⚠️
-- Ollama snap may auto-bind **8081–8083**, which prevents `./start_servers.sh` from starting local servers. Diagnose with `ss`/`lsof` and stop/disable Ollama (`sudo snap stop ollama && sudo snap disable ollama`) if needed.
-- `start_servers.sh` includes a preflight check and supports `FORCE_KILL_PORTS=1` for emergency use—prefer stopping services manually first.
+Tests & CI — focused commands 🧪
+- Unit: `pytest backend/` (or `pytest` at repo root).
+- Frontend e2e: `npx playwright install && npm run test:e2e` from `frontend/frontend`.
+- If adding infra-level changes, include a focused test and a README snippet that documents how to run it locally.
 
-If anything is unclear
-- Ask focused, component-specific questions and include the file paths you plan to change (e.g., `agent_panel/native_control.py`, `backend/main.py`).
+High-risk areas — do NOT auto-merge ⚠️
+- `llama.cpp/` (AI-generated PRs prohibited)
+- `agent_panel/native_control.py` and any code that performs OS/network/camera actions
+- Crawlers, sandboxing, and any code that writes to host paths — require maintainer sign-off + tests.
 
-(Kept concise and focused—ask if you want additional examples or deeper file pointers.)markdown
+Debug checklist (fast) 🔧
+1. Check logs: `./logs/backend.log` and `./logs/frontend.log` (+ `.pid` files).
+2. Health endpoints: `http://localhost:8081/health` (LLM), `http://localhost:8001/api/status` (backend).
+3. Port conflicts: `sudo ss -ltnp | grep :8081` / `lsof -iTCP:8081 -sTCP:LISTEN`.
+4. DB/migration: `POST /api/admin/import-memory` uses `./scripts/migrate_memory_to_db.py`.
+
+PR checklist for maintainers ✅
+- Small, focused change (one behavioral change or one new feature).
+- Add/modify unit tests and include reproduction steps in PR description.
+- Mention maintainers for sensitive areas and document required env to run locally.
+- If touching `llama.cpp/` or `native_control.py`, include explicit reviewer request and tests.
+
+Search shortcuts (save time) ⌘
+- grep for: `DebateOrchestrator`, `MemorySystem`, `MODEL_BACKEND_TYPE`, `persist_agent_embedding_anchors`, `start_servers.sh`.
+
+If something is missing or unclear
+- Tell me which component or file you want expanded (e.g., `backend/debate/orchestrator.py`) and I'll add a 1‑page editing checklist or a focused code example.
+
+— End of concise guide. Ask if you want this expanded into separate CONTRIBUTING / developer-FAQ snippets.
 # Copilot Instructions — Cygnus Pyramid (2026)
 
 Purpose: concise, repo-specific guidance for AI coding agents to be productive safely.
