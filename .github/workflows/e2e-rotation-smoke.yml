@@ -1,0 +1,85 @@
+name: E2E Rotation Smoke
+
+on:
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  rotation-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Detect frontend dir
+        run: |
+          if ls frontend/frontend/tests/e2e/* 1> /dev/null 2>&1; then
+            echo "FRONTEND_DIR=frontend/frontend" >> $GITHUB_ENV
+          else
+            echo "FRONTEND_DIR=frontend" >> $GITHUB_ENV
+          fi
+
+      - name: Install frontend deps & Playwright chromium
+        run: |
+          cd "$FRONTEND_DIR"
+          npm ci
+          npx playwright install chromium
+
+      - name: Ensure backend available or start stub
+        run: |
+          if curl -sSf http://127.0.0.1:8001/api/status > /dev/null 2>&1; then
+            echo "backend up"
+          else
+            echo "Starting lightweight stub backend"
+            nohup python -u - <<'PY' > /tmp/uvicorn.log 2>&1 &
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+class H(BaseHTTPRequestHandler):
+    def _json(self, payload):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    def do_GET(self):
+        if self.path == '/api/status':
+            self._json({'ok': True})
+        else:
+            self._json({'ok': True})
+    def do_POST(self):
+        self._json({'ok': True})
+HTTPServer(('127.0.0.1', 8001), H).serve_forever()
+PY
+            echo $! > /tmp/uvicorn.pid
+
+      - name: Start frontend preview (build & preview)
+        run: |
+          cd "$FRONTEND_DIR"
+          npm run build
+          nohup npm run preview -- --port 5173 > /tmp/preview.log 2>&1 & echo $! > /tmp/preview.pid
+          for i in $(seq 1 30); do
+            if curl -sSf http://127.0.0.1:5173/ > /dev/null 2>&1; then echo "frontend up"; break; fi
+            sleep 1
+          done
+
+      - name: Run rotation smoke tests (chromium only)
+        env:
+          CI: '1'
+          PLAYWRIGHT_SKIP_WEBKIT: '1'
+        run: |
+          cd "$FRONTEND_DIR"
+          # Run the rotation + websocket smoke tests only (chromium)
+          npx playwright test frontend/tests/e2e/debate-rotation.spec.ts frontend/tests/e2e/debate-ws.spec.ts --project=chromium --reporter=github --timeout 60000

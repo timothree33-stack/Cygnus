@@ -1,0 +1,27 @@
+/* Scoreboard visuals and small animations */
+.sb-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,#fff8e6,#fff3d6);
+  color: #b36b00;
+  font-weight: 600;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(179,107,0,0.12);
+  animation: sb-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes sb-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sb-team-active {
+  transition: background-color 200ms ease, transform 160ms ease;
+}
+
+.sb-cell:hover {
+  transform: translateY(-3px);
+}

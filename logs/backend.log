@@ -1,0 +1,140 @@
+INFO:     Started server process [859608]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     127.0.0.1:53720 - "POST /api/debate/start?pause_sec=1&rounds=5 HTTP/1.1" 200 OK
+BROADCAST: {'type': 'debate_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'topic': '(random topic)'}
+BROADCAST: {'type': 'round_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 1}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 1)", 'ts': 1768525206.0017219}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': 'a71697b47884257112379c27dce3af538e54d2e2', 'summary': "Katz responds to '(random topic)' (round 1)", 'ts': 1768525206}
+INFO:     127.0.0.1:53730 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768525207.002693}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '8706bf88776f085562e74401669670a987a11461', 'summary': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768525207}
+INFO:     127.0.0.1:53746 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 1, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 2}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 2)", 'ts': 1768525208.0044482}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '1a51d3c8853d7190d27d8b77c8ab6c72d79189f8', 'summary': "Katz responds to '(random topic)' (round 2)", 'ts': 1768525208}
+INFO:     127.0.0.1:53760 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768525209.0056372}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': 'c6c4cff2acd64f119d59969bdd497e9596f99bfa', 'summary': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768525209}
+INFO:     127.0.0.1:46302 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 2, 'scores': {'katz': 25, 'dogz': 26}}
+BROADCAST: {'type': 'round_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 3}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 3)", 'ts': 1768525210.006559}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '57f3b2313f8aa7219f6766527e471d1f9aebd9d5', 'summary': "Katz responds to '(random topic)' (round 3)", 'ts': 1768525210}
+INFO:     127.0.0.1:46310 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 3)", 'ts': 1768525211.0074704}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '00fd058097852563b0c7eea39ac302e8859569e5', 'summary': "Dogz responds to '(random topic)' (round 3)", 'ts': 1768525211}
+INFO:     127.0.0.1:46324 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 3, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 4}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 4)", 'ts': 1768525212.0088482}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': 'b888c3d66d2d31de409b8bb65a161a3ba4dc0646', 'summary': "Katz responds to '(random topic)' (round 4)", 'ts': 1768525212}
+INFO:     127.0.0.1:46326 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 4)", 'ts': 1768525213.0099037}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': 'e3628105f491bf0227cf37d28f2422467f0d7dfb', 'summary': "Dogz responds to '(random topic)' (round 4)", 'ts': 1768525213}
+INFO:     127.0.0.1:46334 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 4, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 5}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 5)", 'ts': 1768525214.0109835}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '40cf5ead45e2835b2f7c07841314cb16c66fc008', 'summary': "Katz responds to '(random topic)' (round 5)", 'ts': 1768525214}
+INFO:     127.0.0.1:46344 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 5)", 'ts': 1768525215.0133276}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '8b5f38dce747ca23ca773bc1cdef4fe6cd966803', 'summary': "Dogz responds to '(random topic)' (round 5)", 'ts': 1768525215}
+INFO:     127.0.0.1:46350 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'round': 5, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'statement', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'agent': 'cygnus', 'text': "Cygnus responds to '(random topic)' (round final)", 'ts': 1768525216.0142612}
+BROADCAST: {'type': 'debate_finished', 'debate_id': 'f0b79abf-4d62-4162-8162-461b5c094a3d', 'final': "Cygnus responds to '(random topic)' (round final)", 'history': [{'round': 1, 'katz': "Katz responds to '(random topic)' (round 1)", 'dogz': "Dogz responds to '(random topic)' (round 1)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 2, 'katz': "Katz responds to '(random topic)' (round 2)", 'dogz': "Dogz responds to '(random topic)' (round 2)", 'scores': {'katz': 25, 'dogz': 26}}, {'round': 3, 'katz': "Katz responds to '(random topic)' (round 3)", 'dogz': "Dogz responds to '(random topic)' (round 3)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 4, 'katz': "Katz responds to '(random topic)' (round 4)", 'dogz': "Dogz responds to '(random topic)' (round 4)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 5, 'katz': "Katz responds to '(random topic)' (round 5)", 'dogz': "Dogz responds to '(random topic)' (round 5)", 'scores': {'katz': 26, 'dogz': 25}}]}
+INFO:     127.0.0.1:46362 - "GET /api/debate/f0b79abf-4d62-4162-8162-461b5c094a3d/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50626 - "POST /api/debate/start?pause_sec=1&rounds=5 HTTP/1.1" 200 OK
+BROADCAST: {'type': 'debate_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'topic': '(random topic)'}
+BROADCAST: {'type': 'round_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 1}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 1)", 'ts': 1768525234.7244158}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '83588a3673d92f04da1b2717faa97956fa5ed1e2', 'summary': "Katz responds to '(random topic)' (round 1)", 'ts': 1768525234}
+INFO:     127.0.0.1:50640 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768525235.7246795}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '954f15ab0498b56f953e07d494afa002b67ddaf9', 'summary': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768525235}
+INFO:     127.0.0.1:50642 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 1, 'scores': {'katz': 25, 'dogz': 26}}
+BROADCAST: {'type': 'round_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 2}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 2)", 'ts': 1768525236.725042}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': 'd653f20bafbeb57f73c070103576e3c229e0da5a', 'summary': "Katz responds to '(random topic)' (round 2)", 'ts': 1768525236}
+INFO:     127.0.0.1:50646 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768525237.72623}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '1b4fc873acff67249a16b68cafc7a9b2a262f3d2', 'summary': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768525237}
+INFO:     127.0.0.1:50658 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 2, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 3}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 3)", 'ts': 1768525238.7267637}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '97d96df9e17ce0742e1a924c6d71a2380845b095', 'summary': "Katz responds to '(random topic)' (round 3)", 'ts': 1768525238}
+INFO:     127.0.0.1:58586 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 3)", 'ts': 1768525239.7273357}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '85970f834ac50e86d4a73922f874a8223dad45ad', 'summary': "Dogz responds to '(random topic)' (round 3)", 'ts': 1768525239}
+INFO:     127.0.0.1:58588 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 3, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 4}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 4)", 'ts': 1768525240.7284808}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '485a33643cd5bfe8719a1004f8b6fb0a400b56f0', 'summary': "Katz responds to '(random topic)' (round 4)", 'ts': 1768525240}
+INFO:     127.0.0.1:58604 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 4)", 'ts': 1768525241.729548}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '77b70e629bb599edfb449d2c9ccb3dd5f3ec2692', 'summary': "Dogz responds to '(random topic)' (round 4)", 'ts': 1768525241}
+INFO:     127.0.0.1:58606 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 4, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 5}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 5)", 'ts': 1768525242.7307587}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '0d429f4cc97be2fd2bdf2c4cb6eb884e3de8ba6c', 'summary': "Katz responds to '(random topic)' (round 5)", 'ts': 1768525242}
+INFO:     127.0.0.1:58608 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 5)", 'ts': 1768525243.732912}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '506dd626d124a1d3ace4077174d8bff8e2168706', 'summary': "Dogz responds to '(random topic)' (round 5)", 'ts': 1768525243}
+INFO:     127.0.0.1:58624 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'round': 5, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'statement', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'agent': 'cygnus', 'text': "Cygnus responds to '(random topic)' (round final)", 'ts': 1768525244.734271}
+BROADCAST: {'type': 'debate_finished', 'debate_id': '6d629446-1cdc-4b17-b439-a60af39348a8', 'final': "Cygnus responds to '(random topic)' (round final)", 'history': [{'round': 1, 'katz': "Katz responds to '(random topic)' (round 1)", 'dogz': "Dogz responds to '(random topic)' (round 1)", 'scores': {'katz': 25, 'dogz': 26}}, {'round': 2, 'katz': "Katz responds to '(random topic)' (round 2)", 'dogz': "Dogz responds to '(random topic)' (round 2)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 3, 'katz': "Katz responds to '(random topic)' (round 3)", 'dogz': "Dogz responds to '(random topic)' (round 3)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 4, 'katz': "Katz responds to '(random topic)' (round 4)", 'dogz': "Dogz responds to '(random topic)' (round 4)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 5, 'katz': "Katz responds to '(random topic)' (round 5)", 'dogz': "Dogz responds to '(random topic)' (round 5)", 'scores': {'katz': 26, 'dogz': 25}}]}
+INFO:     127.0.0.1:58626 - "GET /api/debate/6d629446-1cdc-4b17-b439-a60af39348a8/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58780 - "POST /api/debate/start?pause_sec=1&rounds=2 HTTP/1.1" 200 OK
+BROADCAST: {'type': 'debate_started', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'topic': '(random topic)'}
+BROADCAST: {'type': 'round_started', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'round': 1}
+BROADCAST: {'type': 'statement', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 1)", 'ts': 1768526251.5146918}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '2b6adddfdd0262758148544cbf152723ded6a616', 'summary': "Katz responds to '(random topic)' (round 1)", 'ts': 1768526251}
+INFO:     127.0.0.1:58790 - "WebSocket /ws/debates/373fb702-533f-4026-98c6-90a6b9a04a67" 403
+INFO:     connection failed (403 Forbidden)
+INFO:     127.0.0.1:58792 - "GET /api/debate/373fb702-533f-4026-98c6-90a6b9a04a67/state HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:58798 - "GET /api/debate/373fb702-533f-4026-98c6-90a6b9a04a67/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768526252.5151606}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': 'd9d9742a1b039cc946c979a06811827c0c9f6dff', 'summary': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768526252}
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'round': 1, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'round': 2}
+BROADCAST: {'type': 'statement', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 2)", 'ts': 1768526253.5161822}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': 'f198b212314baa60eb6a32bbe478f3e0e286a80c', 'summary': "Katz responds to '(random topic)' (round 2)", 'ts': 1768526253}
+BROADCAST: {'type': 'statement', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768526254.5168686}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': 'feff47c4faff1966b4e48828115cd32cb1e67cb1', 'summary': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768526254}
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'round': 2, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'statement', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'agent': 'cygnus', 'text': "Cygnus responds to '(random topic)' (round final)", 'ts': 1768526255.5194259}
+BROADCAST: {'type': 'debate_finished', 'debate_id': '373fb702-533f-4026-98c6-90a6b9a04a67', 'final': "Cygnus responds to '(random topic)' (round final)", 'history': [{'round': 1, 'katz': "Katz responds to '(random topic)' (round 1)", 'dogz': "Dogz responds to '(random topic)' (round 1)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 2, 'katz': "Katz responds to '(random topic)' (round 2)", 'dogz': "Dogz responds to '(random topic)' (round 2)", 'scores': {'katz': 26, 'dogz': 25}}]}
+INFO:     127.0.0.1:45350 - "POST /api/debate/start?pause_sec=1&rounds=2 HTTP/1.1" 200 OK
+BROADCAST: {'type': 'debate_started', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'topic': '(random topic)'}
+BROADCAST: {'type': 'round_started', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'round': 1}
+BROADCAST: {'type': 'statement', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 1)", 'ts': 1768526376.287188}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': '8f71fecf85e90c26f00653be49a5b3245439603c', 'summary': "Katz responds to '(random topic)' (round 1)", 'ts': 1768526376}
+INFO:     127.0.0.1:45360 - "WebSocket /ws/debates/6bf3a285-9f46-4223-8024-fa4c09bce291" 403
+INFO:     connection failed (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:45362 - "GET /api/debate/6bf3a285-9f46-4223-8024-fa4c09bce291/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45370 - "GET /api/debate/6bf3a285-9f46-4223-8024-fa4c09bce291/state HTTP/1.1" 200 OK
+BROADCAST: {'type': 'statement', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768526377.287643}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': 'ecb2ddebadb199878d1cf79da75dd6b44faaa695', 'summary': "Dogz responds to '(random topic)' (round 1)", 'ts': 1768526377}
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'round': 1, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'round_started', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'round': 2}
+BROADCAST: {'type': 'statement', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'agent': 'katz', 'text': "Katz responds to '(random topic)' (round 2)", 'ts': 1768526378.2891843}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'katz', 'snapshot_id': 'b5fe8816e6986c05d95ef556e1a7d25052eaa41b', 'summary': "Katz responds to '(random topic)' (round 2)", 'ts': 1768526378}
+BROADCAST: {'type': 'statement', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'agent': 'dogz', 'text': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768526379.2903864}
+BROADCAST: {'type': 'snapshot_taken', 'agent': 'dogz', 'snapshot_id': '88c98928da219c5a1c5d2f745884e3c8a69ff9f6', 'summary': "Dogz responds to '(random topic)' (round 2)", 'ts': 1768526379}
+BROADCAST: {'type': 'scores_assigned', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'round': 2, 'scores': {'katz': 26, 'dogz': 25}}
+BROADCAST: {'type': 'statement', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'agent': 'cygnus', 'text': "Cygnus responds to '(random topic)' (round final)", 'ts': 1768526380.2916708}
+BROADCAST: {'type': 'debate_finished', 'debate_id': '6bf3a285-9f46-4223-8024-fa4c09bce291', 'final': "Cygnus responds to '(random topic)' (round final)", 'history': [{'round': 1, 'katz': "Katz responds to '(random topic)' (round 1)", 'dogz': "Dogz responds to '(random topic)' (round 1)", 'scores': {'katz': 26, 'dogz': 25}}, {'round': 2, 'katz': "Katz responds to '(random topic)' (round 2)", 'dogz': "Dogz responds to '(random topic)' (round 2)", 'scores': {'katz': 26, 'dogz': 25}}]}
+INFO:     127.0.0.1:40722 - "WebSocket /ws/debates/6bf3a285-9f46-4223-8024-fa4c09bce291" 403
+INFO:     connection failed (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:40734 - "GET /api/debate/6bf3a285-9f46-4223-8024-fa4c09bce291/state HTTP/1.1" 200 OK

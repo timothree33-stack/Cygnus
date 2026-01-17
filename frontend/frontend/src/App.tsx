@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
 import Crawler from './pages/Crawler';
 import Debate from './pages/Debate';
+import Chat from './pages/Chat';
 
 export default function App() {
   return (
@@ -13,7 +14,8 @@ export default function App() {
         <Link to="/dashboard">Dashboard</Link> |
         <Link to="/agents">Agents</Link> |
         <Link to="/crawler">Crawler</Link> |
-        <Link to="/debate">Debate</Link>
+        <Link to="/debate">Debate</Link> |
+        <Link to="/chat">Chat</Link>
       </nav>
       <main>
         <Routes>
@@ -22,6 +24,7 @@ export default function App() {
           <Route path="/agents" element={<Agents />} />
           <Route path="/crawler" element={<Crawler />} />
           <Route path="/debate" element={<Debate />} />
+          <Route path="/chat" element={<Chat />} />
         </Routes>
       </main>
     </div>

@@ -1,0 +1,78 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - link "Home" [ref=e5] [cursor=pointer]:
+      - /url: /
+    - text: "|"
+    - link "Dashboard" [ref=e6] [cursor=pointer]:
+      - /url: /dashboard
+    - text: "|"
+    - link "Agents" [ref=e7] [cursor=pointer]:
+      - /url: /agents
+    - text: "|"
+    - link "Crawler" [ref=e8] [cursor=pointer]:
+      - /url: /crawler
+    - text: "|"
+    - link "Debate" [ref=e9] [cursor=pointer]:
+      - /url: /debate
+  - main [ref=e10]:
+    - generic [ref=e11]:
+      - heading "Debate Room" [level=2] [ref=e12]
+      - generic [ref=e13]:
+        - textbox "Enter topic or generate..." [ref=e14]
+        - button "Generate" [ref=e15]
+        - generic [ref=e16]:
+          - text: "Pause (sec):"
+          - spinbutton "Pause (sec):" [ref=e17]: "1"
+        - generic [ref=e18]:
+          - text: "Jester (per 3 rounds):"
+          - spinbutton "Jester (per 3 rounds):" [ref=e19]: "1"
+        - button "Start" [ref=e20]
+      - generic [ref=e22]:
+        - checkbox "Enable Court-Fool (Quips)" [ref=e23]
+        - text: Enable Court-Fool (Quips)
+      - generic [ref=e24]:
+        - textbox "Or paste debate id to join" [ref=e25]: 6bf3a285-9f46-4223-8024-fa4c09bce291
+        - button "Join" [active] [ref=e26]
+        - button "Pause" [ref=e27]
+        - button "Resume" [ref=e28]
+        - button "All Call" [ref=e29]
+      - generic [ref=e30]:
+        - 'heading "Topic: (random topic)" [level=3] [ref=e31]'
+        - paragraph [ref=e32]:
+          - text: "Debate ID:"
+          - code [ref=e33]: 6bf3a285-9f46-4223-8024-fa4c09bce291
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - heading "Timeline" [level=4] [ref=e36]
+            - generic [ref=e37]:
+              - strong [ref=e38]: Round 1
+              - generic [ref=e39]:
+                - generic [ref=e40]:
+                  - strong [ref=e41]: "Katz:"
+                  - text: Katz responds to '(random topic)' (round 1)
+                - generic [ref=e42]:
+                  - strong [ref=e43]: "Dogz:"
+                  - text: Dogz responds to '(random topic)' (round 1)
+                - generic [ref=e44]:
+                  - emphasis [ref=e45]: "Scores:"
+                  - text: Katz 26 — Dogz 25
+            - generic [ref=e46]:
+              - strong [ref=e47]: Round 2
+              - generic [ref=e48]:
+                - generic [ref=e49]:
+                  - strong [ref=e50]: "Katz:"
+                  - text: Katz responds to '(random topic)' (round 2)
+                - generic [ref=e51]:
+                  - strong [ref=e52]: "Dogz:"
+                  - text: Dogz responds to '(random topic)' (round 2)
+                - generic [ref=e53]:
+                  - emphasis [ref=e54]: "Scores:"
+                  - text: Katz 26 — Dogz 25
+          - generic [ref=e55]:
+            - heading "Snapshots" [level=4] [ref=e56]
+            - paragraph [ref=e57]: No snapshots yet.
+            - list
+```
