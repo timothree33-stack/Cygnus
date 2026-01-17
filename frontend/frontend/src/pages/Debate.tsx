@@ -84,8 +84,76 @@ export default function Debate() {
             }
           } catch (e) { /* ignore malformed messages */ }
         };
-        ws.onopen = () => { console.log('WS connected to debate', debateId); };
+        ws.onopen = () => { 
+          // Send handshake so test servers and backends can acknowledge readiness
+          try { ws.send(JSON.stringify({ type: 'handshake', debate_id: debateId })); } catch (e) {}
+        };
         ws.onclose = () => { console.log('WS closed for debate', debateId); };
+
+        // Track handshake state so we only process messages after ack
+        let wsReady = false;
+        ws.onmessage = async (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'handshake_ack') {
+              wsReady = true;
+              setState((s:any)=> ({...(s||{}), ws_ready: true}));
+              return;
+            }
+            if (!wsReady) return; // ignore other messages until handshake acknowledged
+
+            // re-use existing onmessage processing below by delegating
+            const eventLike = { data: JSON.stringify(msg) };
+            // emulate existing handler: process a single message
+            (async function processMsg(){
+              if (msg.type === 'statement') {
+                setState((s:any)=>{
+                  if(!s) return s;
+                  const history = [...(s.history||[])];
+                  const r = msg.round || msg.round_num || msg.round;
+                  let entry = history.find((h:any)=>h.round===r);
+                  if(!entry){ entry = {round: r, katz: '', dogz: '', scores: {}}; history.push(entry); }
+                  if(msg.team === 'katz' || msg.agent && msg.agent.startsWith('katz')) {
+                    entry.katz = msg.text;
+                    if (msg.member) entry.katz_member = msg.member;
+                    if (msg.agent) entry.katz_agent = msg.agent;
+                  }
+                  if(msg.team === 'dogz' || msg.agent && msg.agent.startsWith('dogz')) {
+                    entry.dogz = msg.text;
+                    if (msg.member) entry.dogz_member = msg.member;
+                    if (msg.agent) entry.dogz_agent = msg.agent;
+                  }
+                  return {...s, history};
+                });
+              } else if (msg.type === 'member_changed') {
+                setState((s:any)=> ({...(s||{}), active_members: {...(s?.active_members||{}), [msg.team]: msg.member_name}}));
+              } else if (msg.type === 'scores_assigned') {
+                setState((s:any)=>{
+                  if(!s) return s;
+                  const history = [...(s.history||[])];
+                  const r = msg.round;
+                  const entry = history.find((h:any)=>h.round===r);
+                  if(entry) entry.scores = msg.scores;
+                  return {...s, history};
+                });
+              } else if (msg.type === 'allcall_round') {
+                setState((s:any)=>{
+                  if(!s) return s;
+                  const history = [...(s.history||[])];
+                  history.push(msg.result);
+                  return {...s, history};
+                });
+              } else if (msg.type === 'snapshot_taken') {
+                setSnapshots((xs:any[])=>[{id: msg.snapshot_id, agent: msg.agent, summary: msg.summary, ts: msg.ts, debate_id: msg.debate_id}, ...xs]);
+              } else if (msg.type === 'debate_finished') {
+                setState((s:any)=> ({...(s||{}), history: msg.history || s?.history || [], final: msg.final}));
+                setFinalSynthesis(msg.final);
+              } else if (msg.type === 'debate_started') {
+                setState((s:any)=> ({...(s||{}), topic: msg.topic}));
+              }
+            })();
+          } catch (e) { /* ignore malformed messages */ }
+        };
       } catch (e) {
         // On error, fallback to polling once per second
         if (!pollRef.current) {

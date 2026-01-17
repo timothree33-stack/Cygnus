@@ -8,11 +8,21 @@ test('debate: handles real websocket messages', async ({ page }) => {
 
   // Accept connections and send a small sequence of events
   wss.on('connection', (socket) => {
-    socket.send(JSON.stringify({ type: 'debate_started', debate_id: 'ws-test', topic: 'WebSocket test' }));
-    setTimeout(() => socket.send(JSON.stringify({ type: 'member_changed', debate_id: 'ws-test', team: 'katz', member_name: 'Alice', member_index: 0, ts: Date.now() })), 200);
-    setTimeout(() => socket.send(JSON.stringify({ type: 'statement', debate_id: 'ws-test', agent: 'katz:Alice', team: 'katz', member: 'Alice', text: 'Alice opening', round: 1, ts: Date.now() })), 400);
-    setTimeout(() => socket.send(JSON.stringify({ type: 'scores_assigned', debate_id: 'ws-test', round: 1, scores: { katz: 40, dogz: 20 } })), 600);
-    setTimeout(() => socket.send(JSON.stringify({ type: 'debate_finished', debate_id: 'ws-test', final: 'Final synthesis', history: [] })), 800);
+    // Wait for handshake from client before sending events
+    socket.on('message', (data) => {
+      try {
+        const msg = JSON.parse(String(data));
+        if (msg && msg.type === 'handshake') {
+          // ack handshake then begin event sequence
+          socket.send(JSON.stringify({ type: 'handshake_ack', debate_id: 'ws-test' }));
+          setTimeout(() => socket.send(JSON.stringify({ type: 'debate_started', debate_id: 'ws-test', topic: 'WebSocket test' })), 50);
+          setTimeout(() => socket.send(JSON.stringify({ type: 'member_changed', debate_id: 'ws-test', team: 'katz', member_name: 'Alice', member_index: 0, ts: Date.now() })), 150);
+          setTimeout(() => socket.send(JSON.stringify({ type: 'statement', debate_id: 'ws-test', agent: 'katz:Alice', team: 'katz', member: 'Alice', text: 'Alice opening', round: 1, ts: Date.now() })), 300);
+          setTimeout(() => socket.send(JSON.stringify({ type: 'scores_assigned', debate_id: 'ws-test', round: 1, scores: { katz: 40, dogz: 20 } })), 450);
+          setTimeout(() => socket.send(JSON.stringify({ type: 'debate_finished', debate_id: 'ws-test', final: 'Final synthesis', history: [] })), 700);
+        }
+      } catch (e) {}
+    });
   });
 
   // Inject WS base override before page loads so Debate.tsx uses our test WS server
